@@ -1,0 +1,170 @@
+Model,Global Mean BGWS historical,Global Mean BGWS ssp370
+BCC-CSM2-MR,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.235
+    tran     float32 0.4135
+    mrro     float32 0.9819
+    bgws     float32 18.85>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.364
+    tran     float32 0.4137
+    mrro     float32 1.063
+    bgws     float32 17.15>"
+CESM2,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.241
+    tran     float32 0.5846
+    mrro     float32 0.9687
+    bgws     float32 10.68>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.323
+    tran     float32 0.5098
+    mrro     float32 1.01
+    bgws     float32 11.87>"
+CMCC-CM2-SR5,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.362
+    tran     float32 0.6817
+    mrro     float32 1.384
+    bgws     float32 15.58>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.554
+    tran     float32 0.7484
+    mrro     float32 1.56
+    bgws     float32 17.48>"
+CNRM-CM6-1,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.175
+    tran     float32 0.7127
+    mrro     float32 0.892
+    bgws     float32 -1.878>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.309
+    tran     float32 0.7044
+    mrro     float32 1.001
+    bgws     float32 0.4903>"
+CNRM-ESM2-1,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.162
+    tran     float32 0.696
+    mrro     float32 0.9191
+    bgws     float32 -1.786>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.297
+    tran     float32 0.6631
+    mrro     float32 1.023
+    bgws     float32 0.5531>"
+CanESM5,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.242
+    tran     float32 0.3435
+    mrro     float32 0.85
+    bgws     float32 16.8>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.552
+    tran     float32 0.3982
+    mrro     float32 1.084
+    bgws     float32 12.54>"
+IPSL-CM6A-LR,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.526
+    tran     float32 0.6085
+    mrro     float32 1.073
+    bgws     float32 9.877>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.743
+    tran     float32 0.642
+    mrro     float32 1.274
+    bgws     float32 11.25>"
+MIROC-ES2L,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.514
+    tran     float32 0.5437
+    mrro     float32 0.6475
+    bgws     float32 6.785>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.676
+    tran     float32 0.5844
+    mrro     float32 0.7082
+    bgws     float32 5.017>"
+MPI-ESM1-2-LR,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.092
+    tran     float32 0.5416
+    mrro     float32 0.5506
+    bgws     float32 0.286>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.224
+    tran     float32 0.5618
+    mrro     float32 0.6156
+    bgws     float32 -0.77>"
+NorESM2-MM,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.112
+    tran     float32 0.5745
+    mrro     float32 0.9137
+    bgws     float32 12.79>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.167
+    tran     float32 0.4973
+    mrro     float32 0.9372
+    bgws     float32 13.03>"
+UKESM1-0-LL,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.182
+    tran     float32 0.676
+    mrro     float32 0.8325
+    bgws     float32 6.52>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.4
+    tran     float32 0.6236
+    mrro     float32 0.989
+    bgws     float32 10.51>"
+Ensemble mean,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.258
+    tran     float32 0.5822
+    mrro     float32 0.9266
+    bgws     float32 9.102>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.419
+    tran     float32 0.5778
+    mrro     float32 1.047
+    bgws     float32 9.644>"
+Ensemble median,"<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.208
+    tran     float32 0.5739
+    mrro     float32 0.8479
+    bgws     float32 9.306>","<bound method Mapping.values of <xarray.Dataset>
+Dimensions:  ()
+Data variables:
+    pr       float32 2.357
+    tran     float32 0.5596
+    mrro     float32 0.9428
+    bgws     float32 9.999>"
