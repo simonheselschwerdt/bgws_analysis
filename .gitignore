@@ -9,3 +9,8 @@ docs/
 # Ignore results
 results/
 
+# Ignore .git files
+.git*
+
+# Ignore scripts
+scripts/
