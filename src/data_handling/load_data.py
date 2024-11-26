@@ -31,7 +31,7 @@ import intake
 import sys
 config_dir = '../../src'
 sys.path.append(config_dir)
-from config import BASE_DIR
+from config import DATA_DIR
 
 # Intake
 
