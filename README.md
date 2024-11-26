@@ -7,14 +7,14 @@
 
 ## Table of Contents
 
-- [Description](##description)
-- [Features](##features)
-- [Installation](##installation)
-- [Usage](##usage)
-- [Directory Structure](##directory-structure)
-- [Authors and Acknowledgment](##authors-and-acknowledgment)
-- [License](##license)
-- [Contact](##contact)
+- [Description](#description)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Directory Structure](#directory-structure)
+- [Authors and Acknowledgment](#authors-and-acknowledgment)
+- [License](#license)
+- [Contact](#contact)
 
 ## Description
 This repository contains code to reproduce the findings of the work in preliminary manuscript 'Large impact of extreme precipitation on global blue-green water share under climate change' (by ...), and this README describes the code and data for reproducibility.
@@ -70,6 +70,7 @@ Follow these steps to set up the project locally:
 
 ## Directory Structure
 
+```plaintext
 bgws-analysis/
 ├── notebooks/                                      
 │   │   ├── import_CMIP6_data_intake.ipynb            
@@ -98,7 +99,8 @@ bgws-analysis/
 │   │   └── regression_analysis_results.py
 ├── environment.yml        
 ├── LICENSE                
-└── README.md             
+└── README.md
+```            
 
 ## Authors and acknowledgment
 The Github repository is maintained by the corresponding author (Simon P. Heselschwerdt, Email: [simon.heselschwerdt@hereon.de](mailto:simon.heselschwerdt@hereon.de)). 
