@@ -51,24 +51,24 @@ Follow these steps to set up the project locally:
 ## Usage of notebooks
 
 1. **Download Data**
-   *Define your data directory in the configuration file (src/config.py) first.*
-   Use the notebook to download the required datasets:
-   notebooks/import_and_preprocess/import_CMIP6_data_intake.ipynb
+   - *Define your data directory in the configuration file (src/config.py) first.*
+   - Use the notebook to download the required datasets:
+   - notebooks/import_and_preprocess/import_CMIP6_data_intake.ipynb
 3. **Preprocess Data**
-   Preprocessing includes: set common timestamps, regrid, apply landmask, remove Antartica and Greenland/Iceland and convert units.
-   notebooks/import_and_preprocess/preprocess_CMIP6_data.ipynb
+   - Preprocessing includes: set common timestamps, regrid, apply landmask, remove Antartica and Greenland/Iceland and convert units.
+   - notebooks/import_and_preprocess/preprocess_CMIP6_data.ipynb
 4. **Compute Variables**
-   Compute variables WUE, VPD, evaporation and RX5day.
-   notebooks/import_and_preprocess/compute_variables_indices.ipynb
+   - Compute variables WUE, VPD, evaporation and RX5day.
+   - notebooks/import_and_preprocess/compute_variables_indices.ipynb
 5. **Generate Maps**
-   Here, we compute the bgws and ensemble stats.
-   notebooks/analysis_and_plots/global_maps.ipynb
+   - Here, we compute the bgws and ensemble stats.
+   - notebooks/analysis_and_plots/global_maps.ipynb
 6. **Generate Parallel Coordinate Plots**
-   Here, we additionally compute spatial means.
-   notebooks/analysis_and_plots/parallel_coordinate_plots.ipynb
+   - Here, we additionally compute spatial means.
+   - notebooks/analysis_and_plots/parallel_coordinate_plots.ipynb
 8. **Perform Regression Analysis and Plot Permutation Importance**
-   Here, we perform the regression analysis and get the importance scores.
-   notebooks/analysis_and_plots/regression_analysis_and_plots.ipynb
+   - Here, we perform the regression analysis and get the importance scores.
+   - notebooks/analysis_and_plots/regression_analysis_and_plots.ipynb
 
 ## Directory Structure
 
