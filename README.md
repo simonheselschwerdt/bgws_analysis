@@ -14,7 +14,6 @@
 - [Directory Structure](#directory-structure)
 - [Authors and Acknowledgment](#authors-and-acknowledgment)
 - [License](#license)
-- [Contact](#contact)
 
 ## Description
 This repository contains code to reproduce the findings of the work in preliminary manuscript 'Large impact of extreme precipitation on global blue-green water share under climate change' (by ...), and this README describes the code and data for reproducibility.
@@ -35,17 +34,20 @@ Data availability: Due to storage and copyright constraints, original CMIP6 data
 Follow these steps to set up the project locally:
 
 1. **Clone the repository:**
+   ```plaintext
    git clone https://github.com/simonheselschwerdt/bgws_analysis.git
    cd bgws_analysis
-
+   ```
 2. **Set up a Conda environment:**
+   ```plaintext
    conda env create -f environment.yml
    conda activate bgws_analysis
-
+   ```
 3. **Verify installation: Ensure all dependencies are installed by running:**
+   ```plaintext
    python --version
    jupyter --version
-
+   ```
 ## Usage of notebooks
 
 1. **Download Data**
