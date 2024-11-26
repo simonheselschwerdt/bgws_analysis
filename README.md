@@ -18,16 +18,20 @@
 ## Description
 This repository contains code to reproduce the findings of the work in preliminary manuscript 'Large impact of extreme precipitation on global blue-green water share under climate change' (by ...), and this README describes the code and data for reproducibility.
 
-Code availability: We provide all code to reproduce the main results and all figures of the paper. Either browse/download files individually or clone the repository to your local machine (git clone https://github.com/simonheselschwerdt/bgws_analysis.git). 
+### **Notebook-Centric Workflow**
+The project uses Jupyter notebooks for all major tasks, including data ingestion, preprocessing, analysis, and visualization. The `src` directory stores reusable functions and utilities to support the notebooks, ensuring modular and clean code.
 
-Data availability: Due to storage and copyright constraints, original CMIP6 data have to be downloaded from their original sources (given in Data Availability Statement).
+### **Code availability**
+We provide all code to reproduce the main results and all figures of the paper. Either browse/download files individually or clone the repository to your local machine (see installation). 
+
+### **Data availability** 
+Due to storage and copyright constraints, original CMIP6 data have to be downloaded from their original sources (given in Data Availability Statement).
 
 ## Features
 
-- Scripts to download and preprocess CMIP6 data.
-- Reproducible workflows for statistical analysis.
-- Code to generate all figures in the paper.
-- Jupyter notebooks for data visualization and exploration.
+- **Jupyter Notebooks as Primary Workflow:** The entire workflow, including data download, preprocessing, analysis, and visualization, is implemented in Jupyter notebooks.
+- **Reusable Python Functions:** The `src` directory contains modular Python scripts with reusable functions to support the notebooks.
+- **Reproducible Research:** All steps are documented for full reproducibility of the analysis.
 
 ## Installation
 
@@ -52,23 +56,35 @@ Follow these steps to set up the project locally:
 
 1. **Download Data**
    - *Define your data directory in the configuration file (src/config.py) first.*
-   - Use the notebook to download the required datasets:
-   - notebooks/import_and_preprocess/import_CMIP6_data_intake.ipynb
+   - Use the following notebook to download the required datasets:
+     ```plaintext
+     notebooks/import_and_preprocess/import_CMIP6_data_intake.ipynb
+     ```
 3. **Preprocess Data**
-   - Preprocessing includes: set common timestamps, regrid, apply landmask, remove Antartica and Greenland/Iceland and convert units.
-   - notebooks/import_and_preprocess/preprocess_CMIP6_data.ipynb
+   - Preprocessing includes tasks like setting common timestamps, regridding, applying landmask, removing Antarctica and Greenland/Iceland, and converting units:
+     ```plaintext
+     notebooks/import_and_preprocess/preprocess_CMIP6_data.ipynb
+     ```
 4. **Compute Variables**
-   - Compute variables WUE, VPD, evaporation and RX5day.
-   - notebooks/import_and_preprocess/compute_variables_indices.ipynb
+   - Compute derived variables such as WUE, VPD, evaporation, and RX5day:
+     ```plaintext
+     notebooks/import_and_preprocess/compute_variables_indices.ipynb
+     ```
 5. **Generate Maps**
-   - Here, we compute the bgws and ensemble stats.
-   - notebooks/analysis_and_plots/global_maps.ipynb
+   - Create global maps of the blue-green water share and ensemble statistics:
+     ```plaintext 
+     notebooks/analysis_and_plots/global_maps.ipynb
+     ```
 6. **Generate Parallel Coordinate Plots**
-   - Here, we additionally compute spatial means.
-   - notebooks/analysis_and_plots/parallel_coordinate_plots.ipynb
+   - Compute spatial means and generate parallel coordinate plots for the analysis:
+     ```plaintext
+     notebooks/analysis_and_plots/parallel_coordinate_plots.ipynb
+     ```
 8. **Perform Regression Analysis and Plot Permutation Importance**
-   - Here, we perform the regression analysis and get the importance scores.
-   - notebooks/analysis_and_plots/regression_analysis_and_plots.ipynb
+   - Perform regression analysis and plot permutation importance scores:
+     ```plaintext
+     notebooks/analysis_and_plots/regression_analysis_and_plots.ipynb
+     ```
 
 ## Directory Structure
 
@@ -83,8 +99,8 @@ bgws-analysis/
 │   │   ├── parallel_coordinate_plots.ipynb
 │   │   └── regression_analysis_and_plots.ipynb
 ├── src/                                            
-│   ├── __init__.py
-│   ├── config.py
+│   ├── __init__.py                               # Package initialization
+│   ├── config.py                                 # Configuration file for defining directories and parameters
 │   ├── data_handling/
 │   │   ├── __init__.py 
 │   │   ├── compute_statistics.py        
@@ -99,9 +115,9 @@ bgws-analysis/
 │   │   ├── colormaps.py        
 │   │   ├── parallel_coordinate_plots.py
 │   │   └── regression_analysis_results.py
-├── environment.yml        
-├── LICENSE                
-└── README.md
+├── environment.yml                               # Conda environment specification
+├── LICENSE                                       # License file
+└── README.md                                     # Project documentation
 ```            
 
 ## Authors and acknowledgment
