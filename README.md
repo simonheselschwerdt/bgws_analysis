@@ -1,6 +1,6 @@
 # **bgws-analysis**
 
-## **Publication Name**
+## **Preliminary Title**
 **Large impact of extreme precipitation on global blue-green water share under climate change**
 
 ---
