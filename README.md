@@ -8,7 +8,6 @@
 ## Table of Contents
 
 - [Description](#description)
-- [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Directory Structure](#directory-structure)
@@ -26,12 +25,6 @@ We provide all code to reproduce the main results and all figures of the paper. 
 
 ### **Data availability** 
 Due to storage and copyright constraints, original CMIP6 data have to be downloaded from their original sources (given in Data Availability Statement).
-
-## Features
-
-- **Jupyter Notebooks as Primary Workflow:** The entire workflow, including data download, preprocessing, analysis, and visualization, is implemented in Jupyter notebooks.
-- **Reusable Python Functions:** The `src` directory contains modular Python scripts with reusable functions to support the notebooks.
-- **Reproducible Research:** All steps are documented for full reproducibility of the analysis.
 
 ## Installation
 
