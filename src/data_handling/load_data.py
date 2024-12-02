@@ -301,7 +301,7 @@ def load_multiple_models_and_experiments(BASE_DIR, data_state, data_product, exp
 
     return ds_dict
 
-def load_period_mean(BASE_DIR, data_state, data_product, experiments, models, variables, specific_months_or_seasons=None):
+def load_period_mean(BASE_DIR, data_state, data_product, experiments, models, variables):
     """
     Load data in different temporal resolutions and compute period means.
 
@@ -311,8 +311,6 @@ def load_period_mean(BASE_DIR, data_state, data_product, experiments, models, va
     - experiments: List of experiments to load e.g. historical ssp370.
     - models: List of models to load.
     - variables: List of variables to load.
-    - specific_months_or_seasons (int, list, str, None): Single month (int), list of months (list), multiple seasons (str) to select,
-                                                         or None to not select any specific month or season.
 
     Returns:
     - A dictionary containing the models with all variables for each experiment respectively, with computed period means.
@@ -320,19 +318,15 @@ def load_period_mean(BASE_DIR, data_state, data_product, experiments, models, va
 
     month_variables = ['tas', 'pr', 'vpd', 'evspsbl', 'evapo', 'tran', 'mrro', 'mrso', 'lai', 'gpp', 'wue', 'huss', 'ps']
     year_variable = 'RX5day'
-    period_mean_variable = 'gsl'
 
     # Filter the variables based on the input
     month_variables = [var for var in month_variables if var in variables]
     year_variable = year_variable if year_variable in variables else None
-    period_mean_variable = period_mean_variable if period_mean_variable in variables else None
 
     # Define periods for historical and ssp370 experiments
     periods = {
         'historical': (1985, 2014),
-        'ssp126': (2071, 2100),
-        'ssp370': (2071, 2100),
-        'ssp585': (2071, 2100)
+        'ssp370': (2071, 2100)
     }
 
     # Initialize dictionary to store datasets
@@ -350,7 +344,7 @@ def load_period_mean(BASE_DIR, data_state, data_product, experiments, models, va
             if start_year and end_year:
                 if any(model in ds_month[experiment] for model in models):
                     print(f"Selecting period {start_year}-{end_year} for 'month' variables in experiment '{experiment}'...")
-                    ds_month_selected = pro_dat.select_period(ds_month[experiment], start_year=start_year, end_year=end_year, specific_months_or_seasons=specific_months_or_seasons)
+                    ds_month_selected = pro_dat.select_period(ds_month[experiment], start_year=start_year, end_year=end_year)
 
                     print(f"Computing period mean for 'month' variables in experiment '{experiment}'...")
                     ds_dict[experiment]['month'] = comp_stats.compute_temporal_or_spatial_statistic(ds_month_selected, 'temporal', 'mean')
@@ -363,12 +357,6 @@ def load_period_mean(BASE_DIR, data_state, data_product, experiments, models, va
             print(f"Computing period mean for 'year' variable in experiment '{experiment}'...")
             ds_dict[experiment]['year'] = comp_stats.compute_temporal_or_spatial_statistic(ds_year[experiment], 'temporal', 'mean')
 
-        # Process period_mean variable
-        if period_mean_variable:
-            print(f"Loading 'period_mean' resolution variable '{period_mean_variable}' for experiment '{experiment}'...")
-            ds_period_mean = load_multiple_models_and_experiments(BASE_DIR, data_state, data_product, [experiment], 'period_mean', models, [period_mean_variable])
-            ds_dict[experiment]['period_mean'] = ds_period_mean[experiment]
-
         # Merge all datasets for each model
         print(f"Merging all datasets for experiment '{experiment}'...")
         merged_dict = {}
@@ -378,8 +366,6 @@ def load_period_mean(BASE_DIR, data_state, data_product, experiments, models, va
                 model_datasets.extend([ds_dict[experiment]['month'][model][var] for var in month_variables if var in ds_dict[experiment]['month'][model]])
             if 'year' in ds_dict[experiment] and model in ds_dict[experiment]['year']:
                 model_datasets.append(ds_dict[experiment]['year'][model][year_variable])
-            if 'period_mean' in ds_dict[experiment] and model in ds_dict[experiment]['period_mean']:
-                model_datasets.append(ds_dict[experiment]['period_mean'][model][period_mean_variable])
     
             if model_datasets:
                 merged_ds = xr.merge(model_datasets)

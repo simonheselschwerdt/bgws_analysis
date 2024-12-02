@@ -930,7 +930,7 @@ def compute_bgws(ds_dict):
 
     return ds_dict_clean
 
-def subdivide_ds_dict_regions(ds_dict_base_region, ds_dict_change_region, base_id, change_id, variable):
+def subdivide_ds_dict(ds_dict_base, ds_dict_change, base_id, change_id, variable):
     """
     Subdivide datasets for multiple models based on the specified variable.
 
@@ -942,20 +942,20 @@ def subdivide_ds_dict_regions(ds_dict_base_region, ds_dict_change_region, base_i
     Returns:
     Dictionary of subdivided datasets.
     """
-    ds_dict_change_region_sub = {}
-    ds_dict_change_region_sub[change_id] = {}
+    ds_dict_change_sub = {}
+    ds_dict_change_sub[change_id] = {}
     
-    for model, ds_region in ds_dict_base_region.items():
-        ds_dict_change_region_sub[change_id][model] = subdivide_ds_by_region(
-            ds_region, ds_dict_change_region[model], base_id, change_id, 
+    for model in ds_dict_base.items():
+        ds_dict_change_sub[change_id][model] = subdivide_ds_by_regime(
+            ds_region, ds_dict_change[model], base_id, change_id, 
             variable
         )
 
     return ds_dict_change_region_sub
 
-def subdivide_ds_by_region(ds_base, ds_change, base_id, change_id, variable='bgws'):
+def subdivide_ds_by_regime(ds_base, ds_change, base_id, change_id, variable='bgws'):
     """
-    Subdivide a single dataset into regions based on historical data of a variable.
+    Subdivide a single dataset based on historical data of a variable.
     
     Parameters:
     ds_historical: Historical dataset.
@@ -970,13 +970,12 @@ def subdivide_ds_by_region(ds_base, ds_change, base_id, change_id, variable='bgw
 
     subdivisions_masks = xr.DataArray(
         np.array([mask_positive, mask_negative]),
-        dims=['subdivision', 'lat', 'lon', 'region'],
+        dims=['subdivision', 'lat', 'lon'],
         coords={
             'subdivision': [f'Positive {base_id.capitalize()} {variable.upper()}', 
                             f'Negative {base_id.capitalize()} {variable.upper()}'],
             'lat': ds_base.lat,
             'lon': ds_base.lon,
-            'region': ds_base.region
         }
     )
 
