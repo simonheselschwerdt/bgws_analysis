@@ -1,19 +1,34 @@
 """
 src/data_handling/compute_statistics.py
 
-This script provides functions to process data. Users can compute different statistics.
+This script provides functions for data processing and statistical computation, 
+including temporal and spatial statistics, ensemble statistics, and percentage changes.
 
 Functions:
-- compute_statistic_per_model
-- compute_temporal_statistic
-- compute_spatial_statistic
-- compute_temporal_or_spatial_statistic
-- compute_yearly_sum
-- compute_ensemble_statistic
+- `compute_statistic_per_model`: Compute a specified statistic (e.g., mean, std) for a dataset over a given dimension.
+- `compute_temporal_statistic`: Compute a statistic over the temporal dimension (time or year).
+- `compute_spatial_statistic`: Compute a statistic over the spatial dimension using weighted averaging.
+- `compute_temporal_or_spatial_statistic`: Compute a statistic across datasets for a given dimension.
+- `compute_yearly_sum`: Compute yearly sums while preserving NaN values.
+- `compute_ensemble_statistic`: Compute ensemble-level statistics from multiple datasets.
+- `compute_statistic_single`: Compute a single statistic for a dataset, optionally applying yearly means.
+- `compute_yearly_means`: Compute yearly means for datasets.
+- `compute_stats`: Compute yearly means and spatial statistics for datasets.
+- `precompute_metrics`: Precompute correlation metrics (e.g., Pearson) for datasets.
+- `compute_spatial_mean_with_subdivisions`: Compute spatial means for regions and subdivisions.
+- `compute_area_percentage_changes`: Compute the percentage of area with positive/negative changes.
+- `compute_flip_changes`: Compute grid-cell flips between positive and negative states.
+- `compute_grid_cell_area`: Calculate the surface area of grid cells in a regular lat/lon grid.
 
 Usage:
-    Import this module in your scripts to process data for the analysis.
+    Import this module to preprocess and analyze datasets for climate model analysis.
+
+Author: Simon P. Heselschwerdt
+Date: 2024-12-05
+Dependencies: sys, os, xarray, pandas, numpy, multiprocessing, dask
 """
+
+# ========== Imports ==========
 
 import sys
 import os
@@ -24,6 +39,8 @@ import numpy as np
 import multiprocessing as mp
 import dask
 from dask.diagnostics import ProgressBar
+
+# ========== Statistic Computation Functions ==========
 
 def compute_statistic_per_model(ds, dimension, statistic):
     """
@@ -219,20 +236,6 @@ def compute_ensemble_statistic(ds_dict, statistic):
     print(f"Computed Ensemble {statistic} for all experiments.")
     return {**ds_dict, **ds_dict_result}
 
-def calculate_spatial_mean(ds_dict):
-    ds_dict_mean = {}
-    for key, ds in ds_dict.items():
-        attrs = ds.attrs
-        for var in list(ds.data_vars.keys()):
-            var_attrs = ds[var].attrs
-            
-            ds_dict_mean[key][var] = ds.mean(['lon', 'lat'])
-            ds_dict_mean[key][var].attrs = var_attrs
-        
-        ds_dict_mean[key].attrs = attrs
-        
-    return ds_dict_mean
-
 def compute_statistic_single(ds, statistic, dimension, yearly_mean=True):
     if dimension == "time":
         stat_ds = getattr(ds, statistic)("time", keep_attrs=True, skipna=True)
@@ -245,8 +248,7 @@ def compute_statistic_single(ds, statistic, dimension, yearly_mean=True):
         if yearly_mean:
             ds = ds.groupby('time.year').mean('time', keep_attrs=True, skipna=True)
             ds.attrs['mean'] = 'yearly mean'
-            
-        
+              
         #get the weights, apply on data, and compute statistic
         weights = np.cos(np.deg2rad(ds.lat))
         weights.name = "weights"
@@ -300,7 +302,7 @@ def compute_stats(ds_dict):
         stats[model] = {}
         for var in yearly_ds.data_vars:
             # Compute the spatial mean
-            spatial_mean = yearly_ds[var].mean(dim=['lat', 'lon'])
+            spatial_mean = compute_spatial_statistic(yearly_ds[var], 'mean')
             
             # Store the yearly mean values
             stats[model][var] = spatial_mean
@@ -316,107 +318,6 @@ def compute_yearly_means(ds_dict):
         yearly_means_dict[name] = ds_yearly
 
     return yearly_means_dict
-
-def compute_yearly_regional_means(ds_dict_region):
-    yearly_means_dict = {}
-
-    # For each dataset, compute the yearly mean over the 'time', 'lat', and 'lon' dimensions
-    for region, ds_dict in ds_dict_region.items():
-        yearly_means_dict[region] = {}
-        for ds_name, ds in ds_dict.items():
-            # Compute the yearly mean
-            ds_yearly = ds.groupby('time.year').mean('time')
-            
-            # Create weights
-            weights = np.cos(np.deg2rad(ds.lat))
-            # Apply the weights and calculate the spatial mean
-            ds_weighted = ds_yearly.weighted(weights)
-            yearly_means_dict[region][ds_name] = ds_weighted.mean(('lat', 'lon'))
-
-    return yearly_means_dict
-
-def calculate_spatial_mean(ds_dict):
-    ds_dict_mean = {}
-    
-    for key, ds in ds_dict.items():
-        attrs = ds.attrs
-        
-        # Initialize a new Dataset for this key
-        ds_dict_mean[key] = xr.Dataset()
-        
-        for var in list(ds.data_vars.keys()):
-            var_attrs = ds[var].attrs
-            
-            ds_dict_mean[key][var] = ds[var].mean(['lon', 'lat'])
-            ds_dict_mean[key][var].attrs = var_attrs
-        
-        ds_dict_mean[key].attrs = attrs
-        
-    return ds_dict_mean
-
-def calculate_spatial_mean_std(ds_dict):
-    ds_stats = {}
-    
-    for key, ds in ds_dict.items():
-        attrs = ds.attrs
-        
-        # Initialize a new Dataset for spatial statistics
-        ds_stats[key] = xr.Dataset()
-        
-        for var in list(ds.data_vars.keys()):
-            var_attrs = ds[var].attrs
-            
-            # Calculate the mean and standard deviation, skipping NaN values
-            ds_stats[key][f'{var}'] = ds[var].mean(['lon', 'lat'], skipna=True)
-            ds_stats[key][f'{var}'].attrs = var_attrs
-            
-            # Use a minimum count of 2 for standard deviation to ensure degrees of freedom > 0
-            ds_stats[key][f'{var}_std'] = ds[var].std(['lon', 'lat'], skipna=True)
-            ds_stats[key][f'{var}_std'].attrs = var_attrs
-        
-        ds_stats[key].attrs = attrs
-        
-    return ds_stats
-
-def compute_regional_means(ds_dict_region):
-    """
-    Computes the spatial mean for each region in the masked datasets using weighted averaging.
-
-    Args:
-        ds_dict_region (dict): A dictionary of xarray datasets organized by experiments and models,
-                               where each dataset has a region dimension added.
-
-    Returns:
-        dict: A new dictionary where keys are the same as in the input dictionary,
-              and each value is an xarray Dataset with the weighted spatial mean computed for each region.
-    """
-    
-    ds_dict_region_mean = {}
-
-    for experiment in ds_dict_region.keys():
-        ds_dict_region_mean[experiment] = {}
-        
-        for ds_name, ds in ds_dict_region[experiment].items():
-            ds_mean = xr.Dataset()  # Initiate an empty Dataset for the spatial means
-            
-            for var in ds:
-                if 'region' in ds[var].dims:
-                    # Compute the weighted spatial mean using compute_spatial_statistic function
-                    spatial_mean = compute_spatial_statistic(ds[var], 'mean')
-                    
-                    # Add the spatial mean to the output Dataset
-                    ds_mean[var] = spatial_mean
-                    
-                    # Preserve variable attributes
-                    ds_mean[var].attrs = ds[var].attrs
-            
-            # Copy dataset attributes
-            ds_mean.attrs.update(ds.attrs)
-            
-            # Add the modified dataset to the dictionary
-            ds_dict_region_mean[experiment][ds_name] = ds_mean
-
-    return ds_dict_region_mean
 
 def compute_spatial_mean_with_subdivisions(ds_dict):
     """
@@ -458,3 +359,137 @@ def compute_spatial_mean_with_subdivisions(ds_dict):
             ds_dict_mean[experiment][ds_name] = ds_mean
 
     return ds_dict_mean
+
+def compute_area_percentage_changes(ds_current, ds_change, variable):
+    """
+    Compute the percentage of land area with positive and negative changes for the given datasets.
+
+    Parameters:
+    ds_current (xarray.DataArray): Current dataset.
+    ds_change (xarray.DataArray): Change dataset.
+    variable (str): Variable name to use in the result keys.
+
+    Returns:
+    dict: Dictionary with percentages of positive and negative changes.
+    """
+    # Masks for positive and negative historical states
+    mask_positive = ds_current['bgws'] > 0
+    mask_negative = ds_current['bgws'] < 0
+
+    ds_current = ds_current['bgws']
+    ds_change = ds_change[variable]
+
+    # Calculate grid cell areas for the current dataset
+    cell_areas = compute_grid_cell_area(ds_current)
+
+    # Subset the datasets based on these masks
+    ds_change_positive = ds_change.where(mask_positive)
+    ds_change_negative = ds_change.where(mask_negative)
+    area_positive = cell_areas.where(mask_positive)
+    area_negative = cell_areas.where(mask_negative)
+
+    # Calculate area for positive historical state
+    positive_change_pos_area = (area_positive * (ds_change_positive > 0)).sum().item()
+    negative_change_pos_area = (area_positive * (ds_change_positive < 0)).sum().item()
+    total_pos_area = area_positive.sum().item()
+
+    # Calculate area for negative historical state
+    positive_change_neg_area = (area_negative * (ds_change_negative > 0)).sum().item()
+    negative_change_neg_area = (area_negative * (ds_change_negative < 0)).sum().item()
+    total_neg_area = area_negative.sum().item()
+
+    total_area = total_pos_area + total_neg_area
+
+    result = {
+        'Positive': {
+            'Positive': f"{(positive_change_pos_area / total_area) * 100:.2f}%" if total_area > 0 else "0.00%",
+            'Negative': f"{(negative_change_pos_area / total_area) * 100:.2f}%" if total_area > 0 else "0.00%",
+        },
+        'Negative': {
+            'Positive': f"{(positive_change_neg_area / total_area) * 100:.2f}%" if total_area > 0 else "0.00%",
+            'Negative': f"{(negative_change_neg_area / total_area) * 100:.2f}%" if total_area > 0 else "0.00%",
+        }
+    }
+
+    return result
+
+# ========== Utility Functions ==========
+
+def compute_grid_cell_area(ds):
+    """
+    Calculate the surface area of each grid cell in km² for a regular lat/lon grid.
+
+    Args:
+        ds (xarray.Dataset): The dataset containing latitude ('lat') and longitude ('lon').
+
+    Returns:
+        xarray.DataArray: A 2D array of grid cell areas (km²) with the same lat/lon dimensions.
+    """
+    # Earth's radius in kilometers
+    EARTH_RADIUS = 6371.0
+
+    # Latitude and longitude spacing (assuming uniform grid)
+    lat_spacing = np.abs(ds.lat.diff(dim='lat').mean().item())  # degrees
+    lon_spacing = np.abs(ds.lon.diff(dim='lon').mean().item())  # degrees
+
+    # Convert spacing to radians
+    lat_spacing_rad = np.deg2rad(lat_spacing)
+    lon_spacing_rad = np.deg2rad(lon_spacing)
+
+    # Latitude weights (cosine of latitude)
+    weights = np.cos(np.deg2rad(ds['lat']))
+
+    # Calculate the area of each grid cell
+    grid_cell_area = (
+        (EARTH_RADIUS ** 2) * 
+        lat_spacing_rad * 
+        lon_spacing_rad * 
+        weights
+    )
+
+    # Expand to 2D for all longitudes
+    grid_area_2d = xr.DataArray(
+        np.outer(grid_cell_area, np.ones(len(ds.lon))),
+        dims=['lat', 'lon'],
+        coords={'lat': ds.lat, 'lon': ds.lon}
+    )
+
+    return grid_area_2d
+
+def compute_flip_changes(ds_current, ds_future, variable):
+    """
+    Compute the count and percentage of grid cells where the historical value was positive and is now negative and vice versa.
+
+    Parameters:
+    ds_current (xarray.DataArray): Current (historical) dataset.
+    ds_future (xarray.DataArray): Future dataset.
+    variable (str): Variable name to use in the result keys.
+
+    Returns:
+    dict: Dictionary with counts and percentages of flip changes.
+    """
+
+    # Compute grid cell areas (km²) directly using compute_grid_cell_area
+    grid_cell_area = compute_grid_cell_area(ds_current)
+    
+    # Masks for positive and negative states
+    mask_positive_current = ds_current > 0
+    mask_negative_current = ds_current < 0
+
+    mask_positive_future = ds_future > 0
+    mask_negative_future = ds_future < 0
+
+    # Calculate flips weighted by area
+    pos_to_neg_flip_area = grid_cell_area.where(mask_positive_current & mask_negative_future).sum().item()
+    neg_to_pos_flip_area = grid_cell_area.where(mask_negative_current & mask_positive_future).sum().item()
+
+    # Calculate the total area (exclude NaNs)
+    total_area = grid_cell_area.where(~ds_current.isnull()).sum().item()
+
+    # Results as percentages of total land area
+    result = {
+        f'Positive to Negative (%)': f"{(pos_to_neg_flip_area / total_area) * 100:.2f}%",
+        f'Negative to Positive (%)': f"{(neg_to_pos_flip_area / total_area) * 100:.2f}%"
+    }
+
+    return result

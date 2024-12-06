@@ -23,7 +23,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
-import colormaps as colmap
+import colormaps_and_utilities as col_uti
 
 
 def process_results(results):
@@ -141,7 +141,7 @@ def permut_colormap(df_merged):
     coeff_abs_max = max(abs(coeff_min), abs(coeff_max))
 
     # Create the diverging colormap
-    cmap = colmap.create_diverging_colormap(deep_blue, deep_green)
+    cmap = col_uti.create_diverging_colormap(deep_blue, deep_green)
     
     # Create normalization based on min and max coefficient values
     norm = TwoSlopeNorm(vmin=-coeff_abs_max*0.7, vcenter=0, vmax=coeff_abs_max*0.7)
