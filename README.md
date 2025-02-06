@@ -1,7 +1,7 @@
 # **bgws-analysis**
 
 ## **Preliminary Title**
-**Large impact of extreme precipitation on global blue-green water share under climate change**
+**Large impact of extreme precipitation on projected blue-green water shares**
 
 ---
 
@@ -15,7 +15,7 @@
 - [License](#license)
 
 ## Description
-This repository contains code to reproduce the findings of the work in preliminary manuscript 'Large impact of extreme precipitation on global blue-green water share under climate change' (by ...), and this README describes the code and data for reproducibility.
+This repository contains code to reproduce the findings of the work in preliminary manuscript 'Large impact of extreme precipitation on projected blue-green water shares' (by Simon P. Heselschwerdt*, Yannis Markonis, Anna M. Ukkola, Thorsten Wagener, Lan Wang-Erlandsson, Yuting Yang, and Peter Greve), and this README describes the code and data for reproducibility.
 
 ### **Notebook-Centric Workflow**
 The project uses Jupyter notebooks for all major tasks, including data ingestion, preprocessing, analysis, and visualization. The `src` directory stores reusable functions and utilities to support the notebooks, ensuring modular and clean code.
