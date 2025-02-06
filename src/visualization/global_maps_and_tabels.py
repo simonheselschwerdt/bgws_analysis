@@ -4,41 +4,60 @@ Visualization of Global Maps and Tables
 This script provides functionality to process, analyze, and visualize climate model data, specifically:
 - Generating global maps for various variables and time periods.
 - Computing and visualizing ensemble statistics.
+- Creating scatter plots to compare ensemble mean performance against OBS and ERA5 land and compare RX5day/annual precipitation to other variables.
 - Producing summary tables of global means, percentage changes, and regime shifts.
 
 Functions:
+# ========== Utility Functions ==========
 - `add_box`: Adds a styled annotation box to a plot.
 - `ScatterBoxHandler`: Custom legend handler for scatter-filled legend boxes.
 - `scatter_legend`: Generates scatter-filled legend entries for plots.
 - `cbar_global_map`: Configures and adds colorbars to global map visualizations.
+
+# ========== Analytical Functions ==========
 - `subdivide_bgws`: Segments BGWS data into subdivisions for better analysis.
+
+# ========== Map Plotting Functions ==========
 - `plot_var_data_on_map`: Visualizes a variable on a global map for a specific model and period.
 - `plot_agreement_mask`: Adds ensemble agreement masks to maps, showing high consensus areas.
 - `plot_bgws_sub_change`: Visualizes BGWS subcomponent changes across regions.
 - `plot_bgws_flip`: Highlights BGWS regime shifts (positive to negative or vice versa).
+
+# ========== Scatter Plot Functions ==========
+- `plot_performance_scatter`: Plots BGWS scatter of OBS/ERA5 land compared to Ensemble mean.
+- `plot_scatter_comparison_rx5day_ratio`: Compares scatters of RX5day/annual precipitation (RX5day ratio) against mean precipitation, RX5day and BGWS.
+
+# ========== Table Functions ==========
 - `global_mean_table`: Computes and saves global means for selected variables across scenarios.
 - `percentage_changes_table`: Calculates and exports area-weighted percentage changes.
 - `flip_changes_table`: Generates and exports data showing BGWS regime flips.
 
 Author: Simon P. Heselschwerdt
-Date: 2024-12-06
-Dependencies: numpy, pandas, matplotlib, seaborn, cartopy, xarray
+Date: 2025-02-06
+Dependencies: numpy, pandas, matplotlib, seaborn, cartopy, xarray, scipy
 """
 
 # ========== Imports ==========
+
 import os
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+
 import seaborn as sns
-from matplotlib.colors import TwoSlopeNorm
 import cartopy.crs as ccrs
 import xarray as xr
 
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+from matplotlib.colors import TwoSlopeNorm
 from matplotlib.legend_handler import HandlerBase
 from matplotlib.patches import Rectangle, Circle
 import matplotlib.patches as patches
+
+from scipy.stats import gaussian_kde
+from scipy.stats import pearsonr
+
+# ========== Import Custom Functions ==========
 
 import colormaps_and_utilities as col_uti
 import compute_statistics as comp_stats
@@ -47,7 +66,8 @@ import compute_statistics as comp_stats
 
 col_map_limits = {
     'historical': {
-        'bgws': {'vmin': -60, 'vmax': 60, 'steps': 20},
+        'bgws_ensmean': {'vmin': -60, 'vmax': 60, 'steps': 20},
+        'bgws_ensstd': {'vmin': 0, 'vmax': 40, 'steps': 5},
         'pr': {'vmin': 0, 'vmax': 10, 'steps': 1},
         'mrro': {'vmin': 0, 'vmax': 3, 'steps': 0.25},
         'tran': {'vmin': 0, 'vmax': 2, 'steps': 0.2},
@@ -59,7 +79,8 @@ col_map_limits = {
         'lai': {'vmin': 0, 'vmax': 6, 'steps': 1}
     },
     'ssp370': {
-        'bgws': {'vmin': -60, 'vmax': 60, 'steps': 20},
+        'bgws_ensmean': {'vmin': -60, 'vmax': 60, 'steps': 20},
+        'bgws_ensstd': {'vmin': 0, 'vmax': 40, 'steps': 5},
         'pr': {'vmin': 0, 'vmax': 10, 'steps': 1},
         'mrro': {'vmin': 0, 'vmax': 3, 'steps': 0.25},
         'tran': {'vmin': 0, 'vmax': 2, 'steps': 0.2},
@@ -71,7 +92,8 @@ col_map_limits = {
         'lai': {'vmin': 0, 'vmax': 6, 'steps': 1}
     },
     'ssp370-historical': {
-        'bgws': {'vmin': -10, 'vmax': 10, 'steps': 5},
+        'bgws_ensmean': {'vmin': -10, 'vmax': 10, 'steps': 5},
+        'bgws_ensstd': {'vmin': 0, 'vmax': 40, 'steps': 5},
         'pr': {'vmin': -0.8, 'vmax': 0.8, 'steps': 0.2},
         'mrro': {'vmin': -0.6, 'vmax': 0.6, 'steps': 0.2},
         'tran': {'vmin': -0.3, 'vmax': 0.3, 'steps': 0.1},
@@ -168,22 +190,37 @@ def scatter_legend(ax, label, facecolor="white", edgecolor="black", lw=0.5):
     """
     return Rectangle((0, 0), 1, 1, facecolor=facecolor, edgecolor=edgecolor, lw=lw, label=label)
 
-def cbar_global_map(img, fig, ax_main, period, variable, vmin, vmax, steps):
+def cbar_global_map(img, fig, ax_main, period, model, variable, vmin, vmax, steps):
     # Add colorbar and legend
-    if (period == 'historical' and variable == 'bgws') or (period == 'ssp370' and variable == 'bgws') or (period == 'ssp370-historical' and variable != 'vpd'):
+    if (period == 'historical' and variable == 'bgws' and model != 'Ensemble std') or (period == 'ssp370' and variable == 'bgws' and model != 'Ensemble std') or (period == 'ssp370-historical' and variable != 'vpd' and model != 'Ensemble std'):
         extend = 'both'
     else:
         extend = 'max'
 
     # Add colorbar
-    cbar = fig.colorbar(img, ax=ax_main, orientation='horizontal', fraction=0.046, pad=0.05, extend=extend, drawedges=True)
+    if variable == 'bgws' and model == 'Ensemble mean' or variable == 'bgws' and model == 'OBS' or variable == 'bgws' and model == 'ERA5':
+        cbar = fig.colorbar(img, ax=ax_main, orientation='horizontal', fraction=0.046, pad=0.05, extend=extend, drawedges=True)
+    elif variable == 'pr' or variable == 'mrro' or variable == 'tran': 
+        cbar = fig.colorbar(img, ax=ax_main, orientation='horizontal', fraction=0.08, pad=0.08, extend=extend, drawedges=True)
+    else:
+        cbar = fig.colorbar(img, ax=ax_main, orientation='horizontal', fraction=0.06, pad=0.065, extend=extend, drawedges=True)
 
     # Get full variable name and unit to set label
     display_variable = col_uti.get_global_map_var_name(period, variable)
-    cbar.set_label(display_variable, fontsize=26, weight='bold', labelpad=15)
-
+    if variable == 'bgws' and model == 'Ensemble mean' or variable == 'bgws' and model == 'OBS' or variable == 'bgws' and model == 'ERA5':
+        cbar.set_label(display_variable, fontsize=26, weight='bold', labelpad=15)
+    elif variable == 'pr' or variable == 'mrro' or variable == 'tran':
+        cbar.set_label(display_variable, fontsize=62, weight='bold', labelpad=15)
+    else:
+        cbar.set_label(display_variable, fontsize=42, weight='bold', labelpad=15)
+    
     # Set ticks 
-    cbar.ax.tick_params(labelsize=24)
+    if variable == 'bgws' and model == 'Ensemble mean' or variable == 'bgws' and model == 'OBS' or variable == 'bgws' and model == 'ERA5':
+        cbar.ax.tick_params(labelsize=24)
+    elif variable == 'pr' or variable == 'mrro' or variable == 'tran': 
+        cbar.ax.tick_params(labelsize=40)
+    else:
+        cbar.ax.tick_params(labelsize=30)
     
     # Define the ticks and their corresponding labels
     if (period == 'ssp370-historical' and variable != 'vpd') or variable == 'bgws':
@@ -228,7 +265,7 @@ def subdivide_bgws(ds_dict_historical, ds_dict_change):
 
 # ========== Map Plotting Functions ==========
 
-def plot_var_data_on_map(ds_dict, model, variable, period, filepath):
+def plot_var_data_on_map(ds_dict, model, variable, period, dpi=300, filetype='pdf', filepath=None):
     """
     Plot a variable on a map for a specified model and period.
 
@@ -255,10 +292,17 @@ def plot_var_data_on_map(ds_dict, model, variable, period, filepath):
         raise ValueError(f"Model '{model}' not found in ds_dict.")
 
     # Get colormap
-    vmin = col_map_limits[period][variable]['vmin']
-    vmax = col_map_limits[period][variable]['vmax']
-    steps = col_map_limits[period][variable]['steps']
-    cmap, cmap_norm = col_uti.create_colormap(variable, period, vmin, vmax, steps)
+    if variable == 'bgws' and model == 'Ensemble mean':
+        cmap_var = 'bgws_ensmean'
+    elif variable == 'bgws' and model == 'Ensemble std':
+        cmap_var = 'bgws_ensstd'
+    else:
+        cmap_var = variable 
+        
+    vmin = col_map_limits[period][cmap_var]['vmin']
+    vmax = col_map_limits[period][cmap_var]['vmax']
+    steps = col_map_limits[period][cmap_var]['steps']
+    cmap, cmap_norm = col_uti.create_colormap(cmap_var, period, vmin, vmax, steps)
 
     # Plot the selected variable from the dataset
     img = ds[variable].plot(ax=ax_main, vmin=vmin, vmax=vmax, cmap=cmap, transform=ccrs.PlateCarree(), add_colorbar=False)
@@ -268,23 +312,31 @@ def plot_var_data_on_map(ds_dict, model, variable, period, filepath):
     ax_main.tick_params(axis='both', which='major', labelsize=20)
     gridlines = ax_main.gridlines(draw_labels=True, color='black', alpha=0.1, linestyle='--')
     gridlines.top_labels = gridlines.right_labels = False
-    gridlines.xlabel_style = {'size': 24}
-    gridlines.ylabel_style = {'size': 24}
+    if variable == 'bgws' and model == 'Ensemble mean' or variable == 'bgws' and model == 'OBS' or variable == 'bgws' and model == 'ERA5':
+        gridlines.xlabel_style = {'size': 24}
+        gridlines.ylabel_style = {'size': 24}
+    elif variable == 'pr' or variable == 'mrro' or variable == 'tran': 
+        gridlines.xlabel_style = {'size': 38}
+        gridlines.ylabel_style = {'size': 38}
+    else:
+        gridlines.xlabel_style = {'size': 30}
+        gridlines.ylabel_style = {'size': 30}
+    
 
     if model == 'Ensemble mean' or model == 'Ensemble median':
         if period == 'ssp370-historical':
             plot_agreement_mask(ds_dict_cleaned, ds, model, variable, ax_main)
             
     # Add colorbar
-    cbar_global_map(img, fig, ax_main, period, variable, vmin, vmax, steps)
+    cbar_global_map(img, fig, ax_main, period, model, variable, vmin, vmax, steps)
 
     # Plot figure
     plt.show()
 
     # Save figure
     if filepath is not None:
-        filename = f'{model}_{variable}_map.pdf'
-        col_uti.save_fig(fig, filepath, filename, dpi=300)
+        filename = f'{model}_{variable}_map.{filetype}'
+        col_uti.save_fig(fig, filepath, filename, dpi=dpi)
         print(f"Figure saved under {filepath}{filename}")
     else:
         print("Figure not saved! If you want to save the figure change filepath='your filepath/' in the function call.")
@@ -303,17 +355,18 @@ def plot_agreement_mask(ds_dict_cleaned, ds, model, variable, ax_main):
 
     # Since the agreement should be at least 50%, ensure no values are below 0.54545455 / Values below come from grid cells with missing data for some models so leave it marked as uncertain
     agreement = agreement.where(agreement >= 0.54545455, np.nan)
-    # Mark the regions where the agreement is above 66% -> 8 of 11 models agree
+    
+    # Mark the regions where the agreement is below 70% -> less than 8 of 11 models agree
     agreement_threshold = 0.7
-    high_agreement_mask = agreement >= agreement_threshold
+    low_agreement_mask = agreement < agreement_threshold
 
     lon, lat = np.meshgrid(ds.lon, ds.lat)
     
-    ax_main.scatter(lon[high_agreement_mask], lat[high_agreement_mask], color='grey', marker='D', s=0.8, transform=ccrs.PlateCarree(), label='High Ensemble Agreement')
-          
+    ax_main.scatter(lon[low_agreement_mask], lat[low_agreement_mask], color='grey', marker='D', s=0.8, transform=ccrs.PlateCarree(), label='Low Ensemble Agreement')
+    
     # Add the custom scatter-filled legend entry
     scatter_handle = scatter_legend(
-        ax_main, label="High Ensemble Agreement", facecolor="white", edgecolor="black", lw=0.5
+        ax_main, label="Low Ensemble Agreement", facecolor="white", edgecolor="black", lw=0.5
     )
     
     # Add the legend
@@ -324,7 +377,7 @@ def plot_agreement_mask(ds_dict_cleaned, ds, model, variable, ax_main):
         loc="lower right",
     )
 
-def plot_bgws_sub_change(ds_dict_historical, ds_dict_change, filepath):
+def plot_bgws_sub_change(ds_dict_historical, ds_dict_change, dpi=300, filetype='pdf', filepath=None):
     """
     Function to plot subdivisions based on current and change datasets for a specific variable and region.
     Each subdivision is represented by a different color on the map.
@@ -393,13 +446,13 @@ def plot_bgws_sub_change(ds_dict_historical, ds_dict_change, filepath):
 
     # Save figure
     if filepath is not None:
-        filename = 'BGWS_subdivision_change_map.pdf'
-        col_uti.save_fig(fig, filepath, filename, dpi=300)
+        filename = f'BGWS_subdivision_change_map.{filetype}'
+        col_uti.save_fig(fig, filepath, filename, dpi=dpi)
         print(f"Figure saved under {filepath}{filename}")
     else:
         print("Figure not saved! If you want to save the figure change filepath='your filepath/' in the function call.")
 
-def plot_bgws_flip(ds_dict, ds_dict_change, filepath):
+def plot_bgws_flip(ds_dict, ds_dict_change, dpi=300, filetype='pdf', filepath=None):
     """
     Plot a variable on a map for a specified model and period.
 
@@ -431,10 +484,10 @@ def plot_bgws_flip(ds_dict, ds_dict_change, filepath):
     ds_ssp370_masked = ds_ssp370.where(sign_change_mask)
 
     # Get colormap
-    vmin = col_map_limits['ssp370-historical']['bgws']['vmin']
-    vmax = col_map_limits['ssp370-historical']['bgws']['vmax']
-    steps = col_map_limits['ssp370-historical']['bgws']['steps']
-    cmap, cmap_norm = col_uti.create_colormap('bgws', 'ssp370-historical', vmin, vmax, steps)
+    vmin = col_map_limits['ssp370-historical']['bgws_ensmean']['vmin']
+    vmax = col_map_limits['ssp370-historical']['bgws_ensmean']['vmax']
+    steps = col_map_limits['ssp370-historical']['bgws_ensmean']['steps']
+    cmap, cmap_norm = col_uti.create_colormap('bgws_ensmean', 'ssp370-historical', vmin, vmax, steps)
 
     # Plot the selected variable from the dataset
     img = ds_ssp370_masked.plot(ax=ax_main, vmin=vmin, vmax=vmax, cmap=cmap, transform=ccrs.PlateCarree(), add_colorbar=False)
@@ -468,18 +521,215 @@ def plot_bgws_flip(ds_dict, ds_dict_change, filepath):
     plot_agreement_mask(ds_dict_masked['ssp370-historical'], ds_ssp370, 'Ensemble mean', 'bgws', ax_main)
             
     # Add colorbar
-    cbar_global_map(img, fig, ax_main, 'ssp370', 'bgws', vmin, vmax, steps)
+    cbar_global_map(img, fig, ax_main, 'ssp370', 'Ensemble mean', 'bgws', vmin, vmax, steps)
 
     # Plot figure
     plt.show()
 
     # Save figure
     if filepath is not None:
-        filename = f'BGWS_flip_map.jpeg'
-        col_uti.save_fig(fig, filepath, filename, dpi=150)
+        filename = f'BGWS_flip_map.{filetype}'
+        col_uti.save_fig(fig, filepath, filename, dpi=dpi)
         print(f"Figure saved under {filepath}{filename}")
     else:
         print("Figure not saved! If you want to save the figure change filepath='your filepath/' in the function call.")
+
+# ========== Scatter Plot Functions ==========
+
+def plot_performance_scatter(reference, model, variable, ref_label, model_label, dpi=300, output_file=None):
+    """
+    Creates a scatter plot comparing two xarray datasets for a specific variable with density-based transparency.
+
+    Parameters:
+    - reference (xarray.Dataset): Reference dataset (e.g., OBS or ERA5_Land).
+    - model (xarray.Dataset): Model dataset (e.g., CMIP6).
+    - variable (str): Variable name to compare.
+    - ref_label (str): Label for the reference dataset.
+    - model_label (str): Label for the model dataset.
+    - output_file (str, optional): File path to save the plot. If None, displays the plot.
+    """
+    # Extract the variable from both datasets
+    reference_data = reference[variable].values.flatten()
+    model_data = model[variable].values.flatten()
+
+    # Mask invalid values (NaN or Inf) from both datasets
+    valid_mask = np.isfinite(reference_data) & np.isfinite(model_data)
+    reference_data = reference_data[valid_mask]
+    model_data = model_data[valid_mask]
+
+    # Calculate global mean for each dataset
+    global_mean_reference = comp_stats.compute_spatial_statistic(reference, 'mean')[variable].values
+    global_mean_model = comp_stats.compute_spatial_statistic(model, 'mean')[variable].values
+
+    # Set plot limits
+    lims = [-100, 100]
+
+    # Calculate Pearson correlation coefficient
+    correlation, _ = pearsonr(reference_data, model_data)
+    mean_bias = np.mean(model_data - reference_data)
+
+    # Calculate density using KDE
+    xy = np.vstack([reference_data, model_data])
+    kde = gaussian_kde(xy)(xy)
+
+    # Normalize density to [0, 1] for transparency adjustment
+    kde_normalized = (kde - kde.min()) / (kde.max() - kde.min())
+
+    # Create scatter plot
+    plt.figure(figsize=(10, 10))
+    plt.scatter(
+        reference_data,
+        model_data,
+        alpha=np.clip(kde_normalized, 0.1, 1.0),  # Ensure a minimum transparency of 0.2
+        color='darkblue',
+        s=30,
+        edgecolor='darkblue'
+    )
+
+    # Add global mean markers
+    plt.scatter(global_mean_reference, global_mean_model, color='red', s=100, edgecolor='red', label='Global Mean')
+
+    # Add 1:1 line
+    plt.plot(lims, lims, 'k-', lw=0.75)
+
+    # Set axis limits
+    plt.xlim(lims)
+    plt.ylim(lims)
+
+    if ref_label == 'ERA5_land':
+        ref_display = 'ERA5 Land'
+    else:
+        ref_display = 'Obs'
+
+    # Add labels and title
+    plt.xlabel(f"{ref_display} – BGWS [%] ", fontsize=20)
+    plt.ylabel(f"{model_label} – BGWS [%]", fontsize=20)
+
+    # Add Pearson correlation coefficient as text
+    plt.text(
+        0.05, 0.95, rf"$\mathrm{{Pearson's\ }} r = {correlation:.2f}$", fontsize=16,
+        transform=plt.gca().transAxes, verticalalignment='top', horizontalalignment='left',
+        bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3')
+    )
+
+    # Customize grid and ticks
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tick_params(axis='both', which='major', labelsize=15)
+
+    # Save or show plot
+    if output_file:
+        plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
+        print(f"Scatter plot saved to {output_file}")
+    else:
+        plt.show()
+
+def plot_scatter_comparison_rx5day_ratio(rx5day_ratio, ds, var_name, dpi=300, output_file=None):
+    """
+    Creates a scatter plot comparing RX5day ratio to a selected variable with density-based transparency.
+
+    Parameters:
+    - rx5day_ratio (np.array): RX5day-to-Annual Precipitation ratio.
+    - var (np.array): Comparison variable values.
+    - output_file (str, optional): File path to save the plot. If None, displays the plot.
+    """
+    # Get var data
+    var_data= ds[var_name].values
+    
+    # Flatten and mask invalid values (NaN or Inf)
+    rx5day_ratio = rx5day_ratio.flatten() * 100
+    var_data = var_data.flatten()
+    valid_mask = np.isfinite(rx5day_ratio) & np.isfinite(var_data)
+    rx5day_ratio = rx5day_ratio[valid_mask]
+    var_data = var_data[valid_mask]
+
+    # Set plot limits
+    #if var 
+    #lims = [-60, 60]
+
+    # Calculate Pearson correlation coefficient
+    correlation, _ = pearsonr(rx5day_ratio, var_data)
+
+    # Calculate density using KDE
+    xy = np.vstack([rx5day_ratio, var_data])
+    kde = gaussian_kde(xy)(xy)
+
+    # Normalize density to [0, 1] for transparency adjustment
+    kde_normalized = (kde - kde.min()) / (kde.max() - kde.min())
+
+    # Create scatter plot
+    plt.figure(figsize=(10, 10))
+
+    # Split data for color coding if bgws
+    if var_name == 'bgws':
+        below_zero = var_data < 0
+        above_zero = var_data > 0
+
+        # Plot points below zero in green
+        plt.scatter(
+            rx5day_ratio[below_zero],
+            var_data[below_zero],
+            alpha=np.clip(kde_normalized[below_zero], 0.1, 1.0),
+            color=(30/255, 130/255, 30/255),
+            s=30,
+            edgecolor='none'
+        )
+    
+        # Plot points above zero in blue
+        plt.scatter(
+            rx5day_ratio[above_zero],
+            var_data[above_zero],
+            alpha=np.clip(kde_normalized[above_zero], 0.1, 1.0),
+            color=(55/255, 140/255, 225/255),
+            s=30,
+            edgecolor='none'
+        )
+         # Set plot limits
+        lims_bgws = [-50, 90]
+        lims_ratio = [0,60]
+    
+        # Add horizontal line at y=0
+        plt.axhline(0, color='black', linestyle='-', linewidth=1)
+
+
+    else:
+        plt.scatter(
+            rx5day_ratio,
+            var_data,
+            alpha=np.clip(kde_normalized, 0.1, 1.0),  # Minimum transparency of 0.1
+            color='blue',
+            s=30,
+            edgecolor='none'
+        )
+
+    # Add labels and title
+    plt.xlabel("RX5day / Annual Precipitation Ratio [%]", fontsize=16)
+    if var_name == 'pr':
+        plt.ylabel("Precipitation [mm/day]", fontsize=16)
+    elif var_name == 'RX5day':
+        plt.ylabel("RX5day [mm]", fontsize=16)
+    elif var_name == 'bgws':
+        plt.ylabel("BGWS [%]", fontsize=16)
+    else:
+        plt.ylabel("", fontsize=16)
+        print(f'No y-axis label for {var_name}')
+
+    # Add Pearson correlation coefficient as text
+    plt.text(
+        0.05, 0.95, rf"$\mathrm{{Pearson's\ }} r = {correlation:.2f}$", fontsize=16,
+        transform=plt.gca().transAxes, verticalalignment='top', horizontalalignment='left',
+        bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3')
+    )
+
+    # Customize grid and ticks
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tick_params(axis='both', which='major', labelsize=12)
+
+    # Save or show plot
+    if output_file:
+        plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
+        print(f"Scatter plot saved to {output_file}")
+    else:
+        plt.show()
 
 # ========== Table Functions ==========
 
@@ -491,10 +741,13 @@ def global_mean_table(ds_dict, ds_dict_change, variables, filepath):
     ds_dict (dict): Dictionary containing the data for different models and experiments.
     ds_dict_change (dict): Dictionary containing the change data between future and historical periods.
     variables (list): List of variable names to include in the table.
-    save_dir (str): Directory where the CSV file will be saved.
+    filepath (str): Directory where the CSV file will be saved.
     """
-    # Initialize the index for rows (model names)
-    row_index = list(ds_dict[list(ds_dict.keys())[0]].keys())
+    # Models to skip
+    skip_models = {'OBS', 'ERA5_land', 'Ensemble std'}
+
+    # Initialize the index for rows (model names), excluding the models to be skipped
+    row_index = [model for model in ds_dict[list(ds_dict.keys())[0]].keys() if model not in skip_models]
 
     # Initialize the MultiIndex for columns
     col_tuples = []
@@ -512,29 +765,33 @@ def global_mean_table(ds_dict, ds_dict_change, variables, filepath):
     results = pd.DataFrame(index=row_index, columns=columns)
 
     # Populate the DataFrame
-    for model in ds_dict[list(ds_dict.keys())[0]].keys():
+    for model in row_index:  # Only iterate over the filtered models
         for var in variables:
-            # Calculate the weighted mean for historical data using comp_stats.compute_spatial_statistic
-            historical_mean = comp_stats.compute_spatial_statistic(ds_dict['historical'][model][var], statistic='mean')
-            historical_mean_rounded = round(historical_mean.item(), 2)
+            try:
+                # Calculate the weighted mean for historical data
+                historical_mean = comp_stats.compute_spatial_statistic(ds_dict['historical'][model][var], statistic='mean')
+                historical_mean_rounded = round(historical_mean.item(), 2)
 
-            # Calculate the weighted mean for SSP3-7.0 data
-            future_mean = comp_stats.compute_spatial_statistic(ds_dict['ssp370'][model][var], statistic='mean')
-            future_mean_rounded = round(future_mean.item(), 2)
+                # Calculate the weighted mean for SSP3-7.0 data
+                future_mean = comp_stats.compute_spatial_statistic(ds_dict['ssp370'][model][var], statistic='mean')
+                future_mean_rounded = round(future_mean.item(), 2)
 
-            # Calculate the change between future and historical
-            change_mean = comp_stats.compute_spatial_statistic(ds_dict_change['ssp370-historical'][model][var], statistic='mean')
-            change_mean_rounded = round(change_mean.item(), 2)
+                # Calculate the change between future and historical
+                change_mean = comp_stats.compute_spatial_statistic(ds_dict_change['ssp370-historical'][model][var], statistic='mean')
+                change_mean_rounded = round(change_mean.item(), 2)
 
-            # Assign the values to the DataFrame
-            results.loc[model, (col_uti.get_global_map_var_name('historical', var), 'Historical')] = historical_mean_rounded
-            results.loc[model, (col_uti.get_global_map_var_name('historical', var), 'SSP3-7.0')] = future_mean_rounded
-            results.loc[model, (col_uti.get_global_map_var_name('historical', var), 'Change')] = change_mean_rounded
+                # Assign the values to the DataFrame
+                results.loc[model, (col_uti.get_global_map_var_name('historical', var), 'Historical')] = historical_mean_rounded
+                results.loc[model, (col_uti.get_global_map_var_name('historical', var), 'SSP3-7.0')] = future_mean_rounded
+                results.loc[model, (col_uti.get_global_map_var_name('historical', var), 'Change')] = change_mean_rounded
+            
+            except KeyError:
+                print(f"Skipping variable {var} for model {model} due to missing data.")
 
     if filepath is not None:
         # Ensure the save directory exists
         os.makedirs(filepath, exist_ok=True)
-        filename = f'global_mean_table.csv'
+        filename = 'global_mean_table.csv'
         savepath = os.path.join(filepath, filename)
     
         # Save the DataFrame to a CSV file
@@ -543,6 +800,7 @@ def global_mean_table(ds_dict, ds_dict_change, variables, filepath):
         print(f"Table saved to {savepath}")
 
     return results
+
 
 def percentage_changes_table(ds_dict_current, ds_dict_change, variable='bgws', filepath=None):
     """
@@ -554,7 +812,11 @@ def percentage_changes_table(ds_dict_current, ds_dict_change, variable='bgws', f
     variable (str): Variable name to compute the changes.
     save_dir (str): Directory where the CSV file will be saved.
     """
-    models = ds_dict_current.keys()
+    # Models to skip
+    skip_models = {'OBS', 'ERA5_land', 'Ensemble std'}
+    
+    # Filter models
+    models = [model for model in ds_dict_current.keys() if model not in skip_models]
 
     # Prepare the structure of the results with simplified labels
     columns = pd.MultiIndex.from_product(
@@ -597,23 +859,30 @@ def flip_changes_table(ds_dict_current, ds_dict_future, variable='bgws', filepat
     ds_dict_current (dict): Dictionary containing historical datasets for different models.
     ds_dict_future (dict): Dictionary containing future datasets for different models.
     variable (str): Variable name to compute the changes.
-    save_dir (str): Directory where the CSV file will be saved.
+    filepath (str): Directory where the CSV file will be saved.
     """
+    # Models to skip
+    skip_models = {'OBS', 'ERA5_land', 'Ensemble std'}
+    
+    # Filter models
+    models = [model for model in ds_dict_current.keys() if model not in skip_models]
+
     results = {'Model': []}
 
-    models = ds_dict_current.keys()
-
     for model in models:
-        ds_current = ds_dict_current[model][variable].drop('member_id', errors='ignore')
-        ds_future = ds_dict_future[model][variable].drop('member_id', errors='ignore')
+        try:
+            ds_current = ds_dict_current[model][variable].drop('member_id', errors='ignore')
+            ds_future = ds_dict_future[model][variable].drop('member_id', errors='ignore')
 
-        result = comp_stats.compute_flip_changes(ds_current, ds_future, variable)
-        
-        results['Model'].append(model)
-        for key, value in result.items():
-            if key not in results:
-                results[key] = []
-            results[key].append(value)
+            result = comp_stats.compute_flip_changes(ds_current, ds_future, variable)
+            
+            results['Model'].append(model)
+            for key, value in result.items():
+                if key not in results:
+                    results[key] = []
+                results[key].append(value)
+        except KeyError:
+            print(f"Skipping model '{model}' due to missing data.")
 
     df = pd.DataFrame(results)
 
@@ -624,7 +893,7 @@ def flip_changes_table(ds_dict_current, ds_dict_future, variable='bgws', filepat
         savepath = os.path.join(filepath, filename)
     
         # Save the DataFrame to a CSV file
-        results.to_csv(savepath)
+        df.to_csv(savepath)
     
         print(f"Table saved to {savepath}")
         

@@ -1,30 +1,43 @@
 """
 Visualization of Regression Analysis Results
 --------------------------------------------
-This script provides functionality to process and visualize the results of
-regression analysis, including model performance metrics and variable importance.
+This script provides functionality to process and visualize the results of 
+regression analysis, including model performance metrics, variable importance, 
+permutation importance, and SHAP value summaries.
 
 Functions:
 - process_results: Extracts key components (performance metrics, variable importance, sample size) from regression results.
-- create_results_dataframe: Creates a DataFrame summarizing regression results.
-- plot_permutation_importance: Plots permutation importances for predictors.
+- create_results_dataframe: Creates a summary DataFrame of regression results.
+- map_colors_to_display_names: Maps specific colors to formatted display variable names.
+- prepare_display_variables: Prepares LaTeX-formatted variable names for visualization.
+- permut_colormap: Generates a diverging colormap for permutation importance plots.
+- create_palette_from_colormap: Creates a custom palette from a colormap based on coefficients.
+- get_coefficients: Extracts coefficients or feature importances from regression models.
+- get_model_coefficients_or_importances: Retrieves either coefficients or feature importances for different models.
+- plot_permutation_importance: Visualizes permutation importance with regression coefficient overlay.
+- plot_shap_summary: Creates SHAP summary plots with mean SHAP values and model performance annotations.
+
+Usage: Import this module and call the appropriate function for processing or visualizing regression results.
 
 Author: [Simon P. Heselschwerdt]
-Date: [2024-11-28]
-Dependencies:
-- pandas
-- matplotlib
-- seaborn
-- numpy
+Date: [2025-06-02]
+Dependencies:pandas, matplotlib, seaborn, numpy, shap
 """
+# ========== Imports ==========
+
 import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
+import shap
+
+# ========== Import Custom Functions ==========
+
 import colormaps_and_utilities as col_uti
 
+# ========== Functions ==========
 
 def process_results(results):
     """
@@ -166,7 +179,7 @@ def get_coefficients(best_model, feature_names, var_names):
     - DataFrame containing feature names and their corresponding coefficients,
       rounded to two decimal places and adjusted for zero values.
     """
-    try:
+    if hasattr(best_model, 'coef_'):
         # Extract coefficients
         coefficients = best_model.coef_
 
@@ -178,13 +191,52 @@ def get_coefficients(best_model, feature_names, var_names):
 
         # Rename the 'Feature' column values according to the LaTeX formatted names
         coef_df['Feature'] = coef_df['Feature'].map(var_names)
-        
+
         return coef_df
     
-    except AttributeError:
-        # If the model does not have coefficients (e.g., tree-based models)
-        return "This model does not support extraction of coefficients."
+    elif hasattr(best_model, 'feature_importances_'):
+        
+        # For tree-based models like RandomForestRegressor
+        importances = best_model.feature_importances_
 
+        rounded_importances = [round(imp, 2) if round(imp, 2) != 0 else 0 for imp in importances]
+
+        # Create a DataFrame mapping feature names to rounded coefficients
+        imp_df = pd.DataFrame(data={'Feature': feature_names, 'Coefficient': rounded_importances})
+
+        imp_df['Feature'] = imp_df['Feature'].map(var_names)
+
+        return imp_df
+
+def get_model_coefficients_or_importances(model, predictor_vars):
+    """
+    Retrieve coefficients or feature importances from a trained model.
+
+    Parameters:
+    - model: The trained regression model (e.g., ElasticNet, RandomForestRegressor).
+    - predictor_vars (list): List of predictor variable names.
+
+    Returns:
+    - pd.DataFrame: A DataFrame containing features and their corresponding coefficients or importances.
+    """
+    if hasattr(model, 'coef_'):
+        # For linear models like ElasticNet, Ridge, Lasso, etc.
+        coefficients = model.coef_
+        return pd.DataFrame({
+            'Feature': predictor_vars,
+            'Coefficient': coefficients
+        }).sort_values(by='Coefficient', ascending=False)
+    
+    elif hasattr(model, 'feature_importances_'):
+        # For tree-based models like RandomForestRegressor
+        importances = model.feature_importances_
+        return pd.DataFrame({
+            'Feature': predictor_vars,
+            'Importance': importances
+        }).sort_values(by='Importance', ascending=False)
+    
+    else:
+        raise AttributeError("The model does not support coefficients or feature importances.")
 
 def plot_permutation_importance(results, predictor_vars, regime, importance_type='test', save_path=None):
     """
@@ -224,7 +276,19 @@ def plot_permutation_importance(results, predictor_vars, regime, importance_type
     # Convert importance DataFrame to long format, merge with coefficients and sort by importance values in descending order
     df_long = var_importance_df.melt(value_vars=var_importance_df.columns, var_name='Feature', value_name='Importance')
     df_merged = pd.merge(df_long, coef_df, on='Feature', how='inner')
-    df_merged = df_merged.sort_values(by='Importance', ascending=False)
+
+    # Calculate mean importance for each feature
+    mean_importance = df_merged.groupby('Feature')['Importance'].mean().sort_values(ascending=False)
+    
+    # Order the features by mean importance
+    df_merged['Feature'] = pd.Categorical(
+        df_merged['Feature'],
+        categories=mean_importance.index,
+        ordered=True
+    )
+    
+    # Sort the DataFrame based on the ordered Feature column
+    df_merged = df_merged.sort_values(by=['Feature', 'Importance'], ascending=[True, False])
 
     # Generate colormap and normalization for coefficients
     bgws_cmap, bgws_cmap_norm = permut_colormap(df_merged)
@@ -232,7 +296,9 @@ def plot_permutation_importance(results, predictor_vars, regime, importance_type
 
     # Plot setup
     fig, ax = plt.subplots(figsize=(12, 8))
-    sns.boxplot(x='Importance', y='Feature', data=df_merged, ax=ax, palette=palette) 
+    sns.boxplot(x='Importance', y='Feature', data=df_merged, ax=ax, palette=palette, hue='Feature', legend=False)
+    # Remove the legend if it is automatically added
+    #ax.legend_.remove()
 
     # Add a vertical line at x=0 for reference
     ax.axvline(0, color='grey', linestyle='--')
@@ -257,7 +323,9 @@ def plot_permutation_importance(results, predictor_vars, regime, importance_type
     cbar.set_ticklabels(['\u2212', '0', '+'], fontsize=20)
 
     # Calculate minimum and maximum
-    importance_min_max = df_merged.groupby('Feature')['Importance'].agg(['min', 'max']).reset_index()
+    importance_min_max = df_merged.groupby('Feature', observed=False)['Importance'].agg(['min', 'max']).reset_index()
+
+    #importance_min_max = df_merged.groupby('Feature')['Importance'].agg(['min', 'max']).reset_index()
 
     # Remove duplicate entries based on 'Feature' and merge the min, max, and upper_25_threshold values back into df_unique for easier access
     df_unique = df_merged.drop_duplicates(subset='Feature')
@@ -309,9 +377,97 @@ def plot_permutation_importance(results, predictor_vars, regime, importance_type
     if save_path:
         filename = f'{regime}_{importance_type}.pdf'
         filepath = os.path.join(save_path, filename)
-        os.makedirs(save_path, exist_ok=True)
+        os.makedirs(save_path, exist_ok=True) 
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
         print(f"Figure saved at: {filepath}")
+  
+    plt.show()
 
-    # Display the plot
+def plot_shap_summary(results, X, predictor_vars, test_train, save_path=None, title=None):
+    """
+    Plot SHAP summary plot for the SHAP values of a model, with mean SHAP values (with sign) included, 
+    and displays R² and n in the bottom-right corner.
+
+    Parameters:
+    - shap_values (np.array): SHAP values for the dataset (either training or test set).
+    - X (pd.DataFrame): The corresponding feature dataset used to compute SHAP values.
+    - predictor_vars (list): List of predictor variable names.
+    - r2 (float, optional): R² value to display in the plot. Defaults to None.
+    - n (int, optional): Number of data points to display in the plot. Defaults to None.
+    - save_path (str, optional): Path to save the plot. Defaults to None.
+    - title (str, optional): Title of the plot. Defaults to None.
+
+    Returns:
+    - None: Displays or saves the SHAP summary plot.
+    """
+    shap_values = results[f'shap_values_{test_train.lower()}']
+    
+    # Ensure SHAP values and input dataset align
+    assert shap_values.shape[1] == len(predictor_vars), "SHAP values must align with predictor variables."
+
+    # Compute mean absolute SHAP values
+    mean_abs_shap_values = np.mean(np.abs(shap_values), axis=0)
+
+    # Prepare variable names with a Delta (Δ) symbol
+    var_names = {
+        'RX5day': r'$\Delta$RX5day',
+        'pr': r'$\Delta$P',
+        'lai': r'$\Delta$LAI',
+        'wue': r'$\Delta$WUE',
+        'vpd': r'$\Delta$VPD',
+        'mrso': r'$\Delta$SM'
+    }
+
+    # Sort features by mean absolute SHAP value
+    sorted_indices = np.argsort(mean_abs_shap_values)[::-1]
+    sorted_vars = [predictor_vars[i] for i in sorted_indices]
+    sorted_mean_abs = mean_abs_shap_values[sorted_indices]
+    
+    # Map sorted variable names to their prepared names
+    prepared_sorted_vars = [var_names.get(var, var) for var in sorted_vars]
+    
+    # Prepare display variable names with mean SHAP values
+    display_vars_with_mean = {
+        var: f"{prepared_var} ({mean:.2f})"
+        for var, prepared_var, mean in zip(sorted_vars, prepared_sorted_vars, sorted_mean_abs)
+    }
+
+    # Rename columns in the input data for display
+    X_display = X.copy()
+    X_display.columns = [display_vars_with_mean.get(col, col) for col in X.columns]
+
+    # Set font for Matplotlib
+    plt.rcParams['font.family'] = 'Nimbus Sans'
+
+    # Create SHAP summary plot
+    plt.figure(figsize=(10, 6))
+    ax = shap.summary_plot(shap_values, X_display, plot_type="dot", show=False)
+
+    from decimal import Decimal, ROUND_HALF_UP
+    # Correctly round r2 using Decimal
+    r2 = float(Decimal(results['performance'][f"R2 {test_train}"]).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+    
+    # Extract the number of data points used in the regression analysis
+    n = results['n']
+    # Add R² and n to the bottom-right corner of the plot
+    r2_text = f"R²: {r2:.2f}\n" if r2 is not None else ""
+    n_text = f"n={n}" if n is not None else ""
+    annotation = r2_text + n_text
+    plt.text(
+        0.95, 0.01, annotation,
+        verticalalignment='bottom', horizontalalignment='right',
+        transform=plt.gca().transAxes,
+        color='black', fontsize=12
+    )
+
+    # Save the plot if a path is specified
+    if save_path:
+        os.makedirs(save_path, exist_ok=True)
+        plt.savefig(
+            os.path.join(save_path, f"{title or 'shap_summary'}.pdf"),
+            dpi=300,
+            bbox_inches="tight"
+        )
+
+    # Show the plot
     plt.show()

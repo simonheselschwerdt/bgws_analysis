@@ -197,7 +197,7 @@ def compute_ensemble_statistic(ds_dict, statistic):
     """
     def compute_ensemble_for_experiment(ds_experiment_dict, statistic):
         # Exclude existing ensemble statistics from the computation
-        datasets_to_combine = {key: ds for key, ds in ds_experiment_dict.items() if not key.startswith('Ensemble ')}
+        datasets_to_combine = {key: ds for key, ds in ds_experiment_dict.items() if not key.startswith('Ensemble ') and key not in ['OBS', 'ERA5_land']}
         
         # Drop 'member_id' coordinate if it exists in any of the datasets
         for ds_key in datasets_to_combine:
@@ -321,7 +321,7 @@ def compute_yearly_means(ds_dict):
 
 def compute_spatial_mean_with_subdivisions(ds_dict):
     """
-    Computes the spatial mean for each region and subdivision in the datasets using weighted averaging.
+    Computes the spatial mean for subdivision in the datasets using weighted averaging.
 
     Args:
         ds_dict (dict): A dictionary of xarray datasets organized by experiments and models,
@@ -342,7 +342,7 @@ def compute_spatial_mean_with_subdivisions(ds_dict):
             ds_mean = xr.Dataset()  # Initiate an empty Dataset for the spatial means
             
             for var in ds:
-                if 'region' in ds[var].dims and 'subdivision' in ds[var].dims:
+                if 'subdivision' in ds[var].dims:
                     # Compute the weighted spatial mean using compute_spatial_statistic function
                     spatial_mean = compute_spatial_statistic(ds[var], 'mean')
                     
@@ -357,6 +357,8 @@ def compute_spatial_mean_with_subdivisions(ds_dict):
             
             # Add the modified dataset to the dictionary
             ds_dict_mean[experiment][ds_name] = ds_mean
+
+    print(f"Weighted spatial mean computed for each regime .")
 
     return ds_dict_mean
 

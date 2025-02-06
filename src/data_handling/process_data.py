@@ -158,8 +158,8 @@ def regrid(ds_dict, method='conservative'):
 def apply_landmask(ds_dict, filename, savepath):
     
     # Load landmask
-    filename = 'land_sea_mask_1x1_grid.nc'
-    savepath = '/work/ch0636/g300115/phd_project/common/data/external/landmask/'
+    #filename = 'land_sea_mask_1x1_grid.nc'
+    #savepath = '/work/ch0636/g300115/phd_project/common/data/landmasks/landmask/'
     print(os.path.join(savepath, filename))
     landmask = ld.open_dataset(os.path.join(savepath, filename))
     landmask.landseamask.plot()
@@ -326,6 +326,36 @@ def create_log(ds, name, var, old_unit):
         print(f"Unit of {var} for model {name} converted from {old_unit} to {ds[var].units}.")
         return ds
 
+def set_negative_values_to_zero(ds_dict):
+    """
+    Set all negative values to zero for all variables in each model in the dictionary.
+
+    Parameters:
+    ds_dict (dict): Dictionary of datasets, each containing various climate variables.
+
+    Returns:
+    dict: Updated dictionary with negative values set to zero.
+    """
+    ds_dict_copy = copy.deepcopy(ds_dict)
+    
+    for name, ds in ds_dict_copy.items():
+        print(f"Processing model: {name}")
+        for var_name in ds.data_vars:
+            variable = ds[var_name]
+            var_attrs = ds[var_name].attrs
+            negative_values_before = variable.where(variable < 0).count().compute().item()
+            if negative_values_before > 0:
+                print(f"Variable '{var_name}' has {negative_values_before} negative values in model '{name}'. Setting them to zero.")
+                # Compute explicitly to handle Dask arrays
+                ds[var_name] = xr.where((variable < 0) & (~np.isnan(variable)), 0, variable)
+                ds[var_name].attrs = var_attrs
+                negative_values_after = ds[var_name].where(ds[var_name] < 0).count().compute().item()
+                print(f"Variable '{var_name}' now has {negative_values_after} negative values in model '{name}' after setting to zero.")
+            else:
+                print(f"Variable '{var_name}' has no negative values in model '{name}'.")
+        print("\n")
+    
+    return ds_dict_copy
 
 #### Compute variables
 
@@ -334,9 +364,6 @@ def compute_evapo(ds_dict):
     ds_dict_copy = copy.deepcopy(ds_dict)
     
     for name, ds in ds_dict_copy.items():
-        # Compute evapo as the difference between evspsbl and tran
-        ds['evapo'] = ds['evspsbl'] - ds['tran']
-        
         # Compute evapo as the difference between evspsbl and tran
         ds['evapo'] = ds['evspsbl'] - ds['tran']
         
@@ -351,6 +378,8 @@ def compute_evapo(ds_dict):
         
         # Update the dictionary with the modified dataset
         ds_dict_copy[name] = ds
+
+    ds_dict_copy = set_negative_values_to_zero(ds_dict_copy)
         
     return ds_dict_copy
 
@@ -396,12 +425,13 @@ def convert_units_wue(ds, var_name, target_units):
                 var = var * 86400  # Convert from kg/m²/s to mm/day
                 var.attrs['units'] = 'mm/day'
         elif var_name == 'gpp' and current_units != target_units:
-            # Assuming gpp might be in other units, add conversion logic if needed
-            pass
+            if current_units == 'kg/m²/s' or 'kg m-2 s-1':
+                var = var * 1000 * 60 * 60 * 24 
+                var.attrs['units'] = 'gC/m²/day'
         var.attrs['units'] = target_units
     return var
 
-def compute_wue(ds_dict, wue_threshold=10):
+def compute_wue_year_sum(ds_dict, wue_threshold=10):
     """
     Compute the Water Use Efficiency (WUE) for each dataset in the dictionary.
 
@@ -410,13 +440,12 @@ def compute_wue(ds_dict, wue_threshold=10):
     wue_threshold (float): The maximum realistic value for WUE, above which values will be set to NaN.
 
     Returns:
-    dict: Updated dictionary with WUE included in each dataset.
+    dict: A new dictionary with WUE datasets, resampled to yearly resolution, for each model.
     """
-    ds_dict_copy = copy.deepcopy(ds_dict)
-    models_with_wue = []
-    realistic_range = (0.1, 5)  # Set a realistic range for WUE values in gC/m²/mm
+    # Create a new dictionary to store yearly WUE data
+    wue_dict = {}
 
-    for name, ds in ds_dict_copy.items():
+    for name, ds in ds_dict.items():
         # Check if all required variables are present
         required_vars = ['tran', 'gpp']
         missing_vars = [var for var in required_vars if var not in ds]
@@ -429,35 +458,84 @@ def compute_wue(ds_dict, wue_threshold=10):
         ds['tran'] = convert_units_wue(ds, 'tran', 'mm/day')
         ds['gpp'] = convert_units_wue(ds, 'gpp', 'gC/m²/day')
 
-        # Resample to yearly sums (assuming 'time' is the dimension in your dataset)
-        yearly_gpp = ds['gpp'].resample(time='1Y').sum(dim='time')
-        yearly_tran = ds['tran'].resample(time='1Y').sum(dim='time')
+        # Resample to yearly sums
+        yearly_gpp = ds['gpp'].resample(time='1YE').sum(dim='time')
+        yearly_tran = ds['tran'].resample(time='1YE').sum(dim='time')
 
         # Compute WUE using the yearly sums
         wue_yearly = yearly_gpp / yearly_tran
 
-        # Optionally, you can set a threshold to remove extreme values
-        wue = xr.where(wue_yearly > wue_threshold, np.nan, wue_yearly)
+        # Optionally, set a threshold to remove extreme values
+        wue = xr.where((wue_yearly > wue_threshold) | (wue_yearly < 0.1), np.nan, wue_yearly)
 
         # Assign attributes to the WUE variable
         attrs = {
-            "description": "This dataset contains the Water Use Efficiency (WUE) computed from gross primary production (gpp) and transpiration (tran).",
+            "description": "Water Use Efficiency (WUE)",
             "units": "gC/m²/mm",
             "long_name": "Water Use Efficiency",
-            "calculation": f"WUE was computed using the formula WUE = gpp / tran with WUE values above {wue_threshold} gC/m²/mm set to NaN.",
-            "source": "Data sourced from the CMIP6 archive.",
+            "calculation": f"WUE = gpp / tran; WUE > {wue_threshold} gC/m²/mm set to NaN.",
         }
+        wue_var = xr.DataArray(wue, dims=wue_yearly.dims, coords=wue_yearly.coords, attrs=attrs)
 
-        # Add WUE to the original dataset
-        wue_var = xr.DataArray(wue, dims=yearly_gpp.dims, coords=yearly_gpp.coords, attrs=attrs)
-        ds['wue'] = wue_var
-
-        # Save the updated dataset back
-        ds_dict_copy[name] = ds
-        models_with_wue.append(name)
+        # Create a new dataset for WUE and save it in the new dictionary
+        wue_ds = xr.Dataset({'wue': wue_var}, coords=wue_var.coords)
+        wue_dict[name] = wue_ds
 
         print(f'WUE computed and saved for {name}')
 
+    return wue_dict
+
+def compute_wue_monthly(ds_dict, wue_threshold=10, epsilon=1e-6):
+    """
+    Compute the Water Use Efficiency (WUE) for each dataset in the dictionary on a monthly basis.
+
+    Parameters:
+    ds_dict (dict): Dictionary of datasets, each containing 'tran' (transpiration) and 'gpp' (gross primary production).
+    wue_threshold (float): Maximum realistic value for WUE, above which values will be set to NaN.
+    epsilon (float): Small constant to prevent division by zero.
+
+    Returns:
+    dict: A new dictionary with WUE datasets for each model.
+    """
+    ds_dict_copy = copy.deepcopy(ds_dict)
+
+    for name, ds in ds_dict.items():
+        # Check if all required variables are present
+        required_vars = ['tran', 'gpp']
+        missing_vars = [var for var in required_vars if var not in ds]
+
+        if missing_vars:
+            print(f'WUE not computed for {name} as variable(s) {", ".join(missing_vars)} is/are missing')
+            continue
+
+        # Convert units if necessary
+        # Uncomment these if you need unit conversion:
+        ds['tran'] = convert_units_wue(ds, 'tran', 'mm/day')
+        ds['gpp'] = convert_units_wue(ds, 'gpp', 'gC/m²/day')
+
+        # Compute WUE directly for each month
+        wue = ds['gpp'] / (ds['tran'] + epsilon)
+
+        # Apply thresholds to remove extreme values
+        wue = xr.where((wue > wue_threshold) | (wue < 0.1), np.nan, wue)
+
+        # Assign attributes to the WUE variable
+        attrs = {
+            "description": "Water Use Efficiency (WUE)",
+            "units": "gC/m²/mm",
+            "long_name": "Monthly Water Use Efficiency",
+            "calculation": f"WUE = gpp / tran; WUE > {wue_threshold} gC/m²/mm set to NaN.",
+        }
+
+        # Add WUE to the original dataset
+        wue_var = xr.DataArray(wue, dims=ds['gpp'].dims, coords=ds['gpp'].coords, attrs=attrs)
+        ds['wue'] = wue_var
+        
+        # Save the updated dataset back
+        ds_dict_copy[name] = ds
+        
+        print(f'Monthly WUE computed and saved for {name}')
+    
     return ds_dict_copy
 
 def convert_units_vpd(ds, var_name, target_units):
@@ -495,10 +573,6 @@ def compute_vpd(ds_dict):
     Returns:
     dict: Updated dictionary with VPD included in each dataset.
     """
-    import copy
-    import xarray as xr
-    import numpy as np
-
     ds_dict_copy = copy.deepcopy(ds_dict)
     
     for name, ds in ds_dict_copy.items():
@@ -737,92 +811,14 @@ def standardize(ds_dict):
         
     return ds_dict_stand
 
-def apply_region_mask(ds_dict, with_global=False):
-    """
-    Applies the AR6 land region mask to datasets in the provided dictionary, adds a region dimension,
-    and optionally includes a 'Global' aggregation.
-
-    Args:
-        ds_dict (dict): A dictionary of xarray datasets organized by experiments and models.
-        with_global (bool): If True, includes a 'Global' region with aggregated data.
-
-    Returns:
-        dict: A new dictionary where keys are the same as in the input dictionary,
-              and each value is an xarray Dataset with a region dimension added to each variable,
-              and optionally includes a 'Global' region.
-    """
-
-    land_regions = regionmask.defined_regions.ar6.land
-    
-    if with_global:
-        global_mask = regionmask.defined_regions.natural_earth_v5_0_0.land_110
-    
-    ds_masked_dict = {}
-
-    for experiment in ds_dict.keys():
-        ds_masked_dict[experiment] = {}
-        
-        for ds_name, ds in ds_dict[experiment].items():
-            ds_masked = xr.Dataset()  # Initiate an empty Dataset for the masked data
-            
-            for var in ds:
-                # Get the binary mask
-                mask = land_regions.mask_3D(ds[var])
-                
-                # Expand the mask to include the time dimension if it exists
-                if 'time' in ds[var].dims:
-                    mask = mask.expand_dims({'time': ds[var].time}, axis=0)
-
-                var_attrs = ds[var].attrs
-    
-                # Multiply the original data with the mask to get the masked data
-                masked_var = ds[var] * mask
-    
-                # Replace 0s with NaNs
-                masked_var = masked_var.where(masked_var != 0)
-                
-                if with_global:
-                    # Convert the global mask to 3D to match the regional mask dimensions
-                    glob_mask = global_mask.mask_3D(ds[var])
-                    
-                    # Expand the global mask to include the time dimension if it exists
-                    if 'time' in ds[var].dims:
-                        glob_mask = glob_mask.expand_dims({'time': ds[var].time}, axis=0)
-                    
-                    global_masked_var = ds[var] * glob_mask
-                    
-                    # Replace 0s with NaNs
-                    global_masked_var = global_masked_var.where(global_masked_var != 0)
-
-                    # Combine masked data
-                    masked_var = xr.concat([masked_var, global_masked_var], dim='region')
-
-                    # Rename the 'names' and 'abbrevs' coordinate
-                    masked_var = masked_var.assign_coords(names=('region', ['Global' if name == 'land' else name for name in masked_var['names'].values]))
-                    masked_var = masked_var.assign_coords(abbrevs=('region', ['glob' if abbrevs == 'lnd' else abbrevs for abbrevs in masked_var['abbrevs'].values]))
-    
-                # Remove regions that contain only NaN values
-                non_nan_regions = ~masked_var.isnull().all(dim=['lat', 'lon', 'time'] if 'time' in ds[var].dims else ['lat', 'lon'])
-                masked_var = masked_var.isel(region=non_nan_regions)
-                
-                # Add the masked variable to the output Dataset
-                ds_masked[var] = masked_var
-                ds_masked[var].attrs = var_attrs
-    
-            # Copy dataset attributes
-            ds_masked.attrs.update(ds.attrs)
-            
-            # Add the modified dataset to the dictionary
-            ds_masked_dict[experiment][ds_name] = ds_masked
-
-    return ds_masked_dict
-
 def is_numeric(data):
     try:
         _ = data.astype(float)
         return True
     except (ValueError, TypeError):
         return False
+
+import copy
 
 def compute_change_dict(ds_dict, var_rel_change=None):
     """
@@ -863,7 +859,18 @@ def compute_change_dict(ds_dict, var_rel_change=None):
         ds_dict_change[f'{period}-historical'] = {}
 
         for model in ds_hist.keys():
+            if model not in ds_future:
+                print(f"Skipping model '{model}' for period '{period}' as it is missing future data.")
+                continue
+            if model not in ds_hist:
+                print(f"Skipping model '{model}' for period 'historical' as it is missing historical data.")
+                continue
+
             common_vars = set(ds_hist[model].data_vars).intersection(ds_future[model].data_vars)
+            if not common_vars:
+                print(f"Skipping model '{model}' for period '{period}' as there are no common variables.")
+                continue
+
             ds_change = ds_hist[model].copy(deep=True)
             
             if var_rel_change == 'all':
@@ -902,12 +909,12 @@ def compute_bgws(ds_dict):
         # Replace infinite values with NaN
         bgws = xr.where(np.isinf(bgws), float('nan'), bgws)
         
-        # Set all values above 200 and below -200 to NaN
-        bgws = xr.where(bgws > 200, float('nan'), bgws)
-        bgws = xr.where(bgws < -200, float('nan'), bgws)
+        # Set all values above 100 and below -100 to NaN as not more than 100% of incoming precipitation can be partitioned towards runoff/transpiration
+        bgws = xr.where(bgws > 100, float('nan'), bgws)
+        bgws = xr.where(bgws < -100, float('nan'), bgws)
         
         ds['bgws'] = bgws
-        ds['bgws'].attrs = {'long_name': 'Blue-Green Water Share', 'units': ''}
+        ds['bgws'].attrs = {'long_name': 'Blue-Green Water Share', 'units': '%'}
         return ds
 
     # Create a new dictionary to avoid modifying the input directly
@@ -945,13 +952,15 @@ def subdivide_ds_dict(ds_dict_base, ds_dict_change, base_id, change_id, variable
     ds_dict_change_sub = {}
     ds_dict_change_sub[change_id] = {}
     
-    for model in ds_dict_base.items():
+    for model, ds in ds_dict_base.items():
         ds_dict_change_sub[change_id][model] = subdivide_ds_by_regime(
-            ds_region, ds_dict_change[model], base_id, change_id, 
+            ds, ds_dict_change[model], base_id, change_id, 
             variable
         )
 
-    return ds_dict_change_region_sub
+    print(f"Datasets subdivided based on historical state of {variable}.")
+
+    return ds_dict_change_sub
 
 def subdivide_ds_by_regime(ds_base, ds_change, base_id, change_id, variable='bgws'):
     """

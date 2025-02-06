@@ -1,25 +1,21 @@
 """
 src/visualization/colormaps_and_utilities.py
 
-This script provides utility functions for colormap creation, color mapping, and figure saving 
-in support of global map visualizations.
+This script provides utility functions for colormap creation, color mapping, and figure saving in support of visualizations.
 
 Functions:
-- `save_fig`: Saves a matplotlib figure to a specified path.
-- `map_colors_to_display_names`: Maps base colors to predictor variable display names.
-- `get_var_name_parallel_coordinate_plot`: Maps variable names to display names for parallel coordinate plots.
-- `get_global_map_var_name`: Maps variable names to display names for global maps.
-- `create_diverging_colormap`: Creates a diverging colormap (negative to positive with white center).
-- `create_two_gradient_colormap_with_white_transition`: Creates a colormap with two gradients with a white transition at zero.
-- `create_two_gradient_colormap`: Creates a colormap with two gradients for negative and positive values.
-- `create_one_gradient_colormap`: Creates a single gradient colormap.
-- `create_palette_from_colormap`: Generates colors for coefficients based on a colormap.
-- `create_colormap`: Builds specific colormaps based on variable and period.
-- `get_colmap_set_up`: Prepares colormap boundaries and bin counts.
-- `create_bgws_change_colormaps`: Generates colormaps specifically for BGWS regime changes.
-
-Usage:
-    Import this module in your scripts and call the required functions.
+- save_fig: Saves a matplotlib figure to a specified path.
+- map_colors_to_display_names: Maps base colors to predictor variable display names.
+- get_var_name_parallel_coordinate_plot: Maps variable names to display names for parallel coordinate plots.
+- get_global_map_var_name: Maps variable names to display names for global maps.
+- create_diverging_colormap: Creates a diverging colormap (negative to positive with white center).
+- create_two_gradient_colormap_with_white_transition: Creates a colormap with two gradients with a white transition at zero.
+- create_two_gradient_colormap: Creates a colormap with two gradients for negative and positive values.
+- create_one_gradient_colormap: Creates a single gradient colormap.
+- create_palette_from_colormap: Generates colors for coefficients based on a colormap.
+- create_colormap: Builds specific colormaps based on variable and period.
+- get_colmap_set_up: Prepares colormap boundaries and bin counts.
+- create_bgws_change_colormaps: Generates colormaps specifically for BGWS regime changes.
 
 Author: Simon P. Heselschwerdt
 Date: 2024-12-02
@@ -31,7 +27,7 @@ import os
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm
 
-# ========== Utility Functions ==========
+# ========== Functions ==========
 
 def save_fig(fig, savepath, filename, dpi):
     os.makedirs(savepath, exist_ok=True)
@@ -55,13 +51,13 @@ def map_colors_to_display_names(base_colors, predictor_vars):
 
 def get_var_name_parallel_coordinate_plot(variables):
     var_map = {
-        'bgws': ('BGWS', r'%'),
+        'bgws': ('BGWS', r'\%'),
         'RX5day': ('RX5day', r'mm'),
         'pr': ('P', r'\frac{mm}{day}'),
         'mrro': ('R', r'\frac{mm}{day}'),
         'tran': ('Tran', r'\frac{mm}{day}'),
         'evapo': ('E', r'\frac{mm}{day}'),
-        'mrso': ('SM', r'%'),
+        'mrso': ('SM', r'\%'),
         'lai': ('LAI', r'\frac{m^2}{m^2}'),
         'wue': ('WUE', r'\frac{GPP}{Tran}'),
         'vpd': ('VPD', r'hPa')
@@ -69,8 +65,8 @@ def get_var_name_parallel_coordinate_plot(variables):
     display_variables = {}
     for var in variables:
         if var in var_map:
-            abbreviation, units = var_map[var]
-            display_variables[var] = f"${{\Delta\, \mathrm{{\it{{{abbreviation}}}}}}}$"
+            abbreviation, unit = var_map[var]
+            display_variables[var] =  f"$\\Delta\\, \\mathit{{{abbreviation}}}$ \n $\\left[{unit}\\right]$" #f"${{\Delta\, \mathrm{{\it{{{abbreviation}}}}}}}$"
         else:
             print(f"Variable '{var}' not found in var_map.")
             display_variables[var] = var
@@ -235,7 +231,7 @@ def create_palette_from_colormap(bgws_cmap, bgws_cmap_norm, coefficients):
 
 def create_colormap(var, period, vmin, vmax, steps):
     if period == 'historical' or period == 'ssp370':
-        if var == 'bgws':
+        if var == 'bgws_ensmean':
             under = (15/255, 115/255, 15/255)  # deeper green
             deep_negative = (30/255, 130/255, 30/255) # green
             light_negative = (240/255, 255/255, 240/255) # light green
@@ -249,6 +245,15 @@ def create_colormap(var, period, vmin, vmax, steps):
             cmap, cmap_norm = create_two_gradient_colormap(deep_negative, light_negative, 
                                                            deep_positive, light_positive, 
                                                            boundaries, n, under, over)
+        
+        elif var == 'bgws_ensstd':
+            light_positive = (246/255, 232/255, 195/255)  # Light Beige
+            deep_positive = (103/255, 0/255, 31/255) #Dark Purple
+            over = (80/255, 0/255, 20/255)  # Darker Purple
+            
+            boundaries, n = get_colmap_set_up(vmin, vmax, steps)
+            cmap, cmap_norm = create_one_gradient_colormap(light_positive, deep_positive, boundaries, n, over)
+
 
         elif var == 'pr' or var == 'RX5day' or var == 'mrro':
             # Color stops for the gradient: Light Beige -> Dark Blue
@@ -289,7 +294,7 @@ def create_colormap(var, period, vmin, vmax, steps):
 
             boundaries, n = get_colmap_set_up(vmin, vmax, steps)
             cmap, cmap_norm = create_one_gradient_colormap(light_positive, deep_positive, boundaries, n, over)
-        elif var == 'bgws':
+        elif var == 'bgws_ensmean':
             under = (15/255, 115/255, 15/255)  # deeper green
             deep_negative = (30/255, 130/255, 30/255) # green
             light_negative = (240/255, 255/255, 240/255) # light green
@@ -303,6 +308,14 @@ def create_colormap(var, period, vmin, vmax, steps):
             cmap, cmap_norm = create_two_gradient_colormap(deep_negative, light_negative, 
                                                            deep_positive, light_positive, 
                                                            boundaries, n, under, over)
+        elif var == 'bgws_ensstd':
+            light_positive = (246/255, 232/255, 195/255)  # Light Beige
+            deep_positive = (103/255, 0/255, 31/255) #Dark Purple
+            over = (80/255, 0/255, 20/255)  # Darker Purple
+            
+            boundaries, n = get_colmap_set_up(vmin, vmax, steps)
+            cmap, cmap_norm = create_one_gradient_colormap(light_positive, deep_positive, boundaries, n, over)
+            
         else:
             under = (84/255, 48/255, 5/255) 
             deep_negative = (100/255, 64/255, 21/255)  

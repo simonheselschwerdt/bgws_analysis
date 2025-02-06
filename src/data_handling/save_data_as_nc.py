@@ -15,8 +15,6 @@ def save_files(ds_dict, save_path):
     Returns:
     - None
     """
-    
-    # Iterate over the datasets in the dictionary
     for model, ds in ds_dict.items():
         for var in ds:
             # Variable to keep
@@ -32,10 +30,11 @@ def save_files(ds_dict, save_path):
             # Create a new dataset with only the desired variable
             ds_var = ds[[variable_to_keep]]
 
-            # Keep only the desired dimensions
-            ds_var = ds_var.isel({dim: slice(None) for dim in dimensions_to_keep.intersection(ds_var.dims)})
+            # Ensure slicing is applied only to valid dimensions
+            valid_dims = dimensions_to_keep.intersection(ds_var.dims)
+            ds_var = ds_var.isel({dim: slice(None) for dim in valid_dims})
 
-            # Set the desired coordinates
+            # Set the desired coordinates, ensuring compatibility
             coords_to_set = set(ds_var.variables).intersection(coordinates_to_keep)
             ds_var = ds_var.set_coords(list(coords_to_set))
 
@@ -45,7 +44,7 @@ def save_files(ds_dict, save_path):
             final_path = os.path.join(var_dir, file_name)
 
             # Check if path exists and create path if not
-            os.makedirs(var_dir, exist_ok=True) 
+            os.makedirs(var_dir, exist_ok=True)
 
             # Remove existing file corresponding to the model
             if os.path.exists(final_path):
@@ -54,7 +53,9 @@ def save_files(ds_dict, save_path):
 
             # Save to netcdf file
             with dask.config.set(scheduler='threads'):
-                ds_var.to_netcdf(final_path)
-                print(f"File saved at: {final_path}")
-
+                try:
+                    ds_var.to_netcdf(final_path)
+                    print(f"File saved at: {final_path}")
+                except ValueError as e:
+                    print(f"Failed to save {final_path} due to: {e}")
     return
