@@ -1,7 +1,7 @@
-# **bgws-analysis**
+# **Blue-Green Water Share Analysis**
 
 ## **Preliminary Title**
-**Large impact of extreme precipitation on projected blue-green water shares**
+**Large impact of extreme 5-day precipitation on projected blue-green water shares**
 
 ---
 
