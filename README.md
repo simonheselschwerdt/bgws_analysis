@@ -24,7 +24,7 @@ The project uses Jupyter notebooks for all major tasks, including data ingestion
 We provide all code to reproduce the main results and all figures of the paper. Either browse/download files individually or clone the repository to your local machine (see installation). 
 
 ### **Data availability** 
-Due to storage and copyright constraints, original CMIP6 data have to be downloaded from their original sources (given in Data Availability Statement).
+Due to storage and copyright constraints, original data have to be downloaded from their sources (given in Data Availability Statement).
 
 ## Installation
 
@@ -73,8 +73,8 @@ Follow these steps to set up the project locally:
      ```plaintext
      notebooks/analysis_and_plots/parallel_coordinate_plots.ipynb
      ```
-8. **Perform Regression Analysis and Plot Permutation Importance**
-   - Perform regression analysis and plot permutation importance scores:
+8. **Perform Regression Analysis and Plot Importance**
+   - Perform regression analysis and plot importance scores:
      ```plaintext
      notebooks/analysis_and_plots/regression_analysis_and_plots.ipynb
      ```
@@ -102,7 +102,8 @@ bgws-analysis/
 │   │   └── save_data_as_nc.py
 │   ├── analysis/        
 │   │   ├── __init__.py 
-│   │   └── regression_analysis.py
+│   │   ├── regression_analysis.py
+│   │   └── regression_analysis_rf.py
 │   └── visualization/ 
 │   │   ├── __init__.py 
 │   │   ├── colormaps.py        
