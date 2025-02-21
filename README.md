@@ -1,6 +1,6 @@
 # **Blue-Green Water Share Analysis**
 
-## **Preliminary Title**
+## **Title**
 **Large impact of extreme 5-day precipitation on projected blue-green water shares**
 
 ---
