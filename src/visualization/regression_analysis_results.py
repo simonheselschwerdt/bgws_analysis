@@ -297,8 +297,6 @@ def plot_permutation_importance(results, predictor_vars, regime, importance_type
     # Plot setup
     fig, ax = plt.subplots(figsize=(12, 8))
     sns.boxplot(x='Importance', y='Feature', data=df_merged, ax=ax, palette=palette, hue='Feature', legend=False)
-    # Remove the legend if it is automatically added
-    #ax.legend_.remove()
 
     # Add a vertical line at x=0 for reference
     ax.axvline(0, color='grey', linestyle='--')
@@ -307,20 +305,20 @@ def plot_permutation_importance(results, predictor_vars, regime, importance_type
     ax.text(0.95, 0.01, f'{performance_metric}: {performance_value}\nn={n}',
             verticalalignment='bottom', horizontalalignment='right',
             transform=ax.transAxes,
-            color='black', fontsize=20)
+            color='black', fontsize=24)
 
     # Customize axes
-    ax.set_xlabel('Decrease in R² Score', fontsize=24)
+    ax.set_xlabel('Decrease in R² Score', fontsize=28)
     ax.set_ylabel('') # No label for y-axis
-    ax.tick_params(axis='both', which='major', labelsize=20) 
+    ax.tick_params(axis='both', which='major', labelsize=24) 
     
     # Add colorbar for coefficients
     sm = plt.cm.ScalarMappable(cmap=bgws_cmap, norm=bgws_cmap_norm)
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label('Regression Coefficient', fontsize=24)
+    cbar.set_label('Regression Coefficient', fontsize=28)
     cbar.set_ticks([bgws_cmap_norm.vmin, 0, bgws_cmap_norm.vmax])
-    cbar.set_ticklabels(['\u2212', '0', '+'], fontsize=20)
+    cbar.set_ticklabels(['\u2212', '0', '+'], fontsize=24)
 
     # Calculate minimum and maximum
     importance_min_max = df_merged.groupby('Feature', observed=False)['Importance'].agg(['min', 'max']).reset_index()

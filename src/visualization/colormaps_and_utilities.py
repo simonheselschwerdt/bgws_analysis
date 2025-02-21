@@ -72,6 +72,29 @@ def get_var_name_parallel_coordinate_plot(variables):
             display_variables[var] = var
     return display_variables
 
+'''def get_var_name_parallel_coordinate_plot(variables):
+    var_map = {
+        'pr': ('P', r'mm\,day^{-1}'),
+        'mrro': ('R', r'mm\,day^{-1}'),
+        'tran': ('Tran', r'mm\,day^{-1}'),
+        'bgws': ('BGWS', r'\%'),
+        'RX5day': ('RX5day', r'mm'),
+        'evapo': ('E', r'mm\,day^{-1}'),
+        'vpd': ('VPD', r'hPa'),
+        'mrso': ('SM', r'\%'), # Only change 
+        'lai': ('LAI', r'm^{2}\,m^{-2}'),
+        'wue': ('WUE', r'gC m^{-2}\,mm^{-1}')
+    }
+    display_variables = {}
+    for var in variables:
+        if var in var_map:
+            abbreviation, unit = var_map[var]
+            display_variables[var] =  f"$\\Delta\\, \\mathit{{{abbreviation}}}$ \n $\\left[{unit}\\right]$"
+        else:
+            print(f"Variable '{var}' not found in var_map.")
+            display_variables[var] = var
+    return display_variables'''
+
 def get_global_map_var_name(period, variable):
     var_map = {
         'pr': ('Precipitation', r'mm day$^{-1}$'),
@@ -97,6 +120,32 @@ def get_global_map_var_name(period, variable):
         print(f"Variable '{variable}' not found in var_map.")
         display_variable = variable 
     return display_variable
+
+'''def get_global_map_var_name(period, variable):
+    var_map = {
+        'pr': ('Precipitation', r'%'),
+        'mrro': ('Runoff', r'%'),
+        'tran': ('Transpiration', r'%'),
+        'bgws': ('Blue-Green Water Share', r'%'),
+        'RX5day': ('RX5day', r'%'),
+        'evapo': ('Evaporation', r'%'),
+        'evspsbl': ('Evapotranspiration', r'%'),
+        'vpd': ('Vapour Pressure Deficit', r'%'),
+        'mrso': ('Soil Moisture', r'%'), # Only change 
+        'lai': ('Leaf Area Index', r'%'),
+        'gpp': ('Gross Primary Productivity', r'%'),  
+        'wue': ('Water Use Efficiency', r'%')
+    }
+    if variable in var_map:
+        long_name, unit = var_map[variable]
+        if period == 'historical' or period == 'ssp370':
+            display_variable = f"{long_name} [{unit}]"
+        else: 
+            display_variable = f"$\Delta$ {long_name} [{unit}]"
+    else:
+        print(f"Variable '{variable}' not found in var_map.")
+        display_variable = variable 
+    return display_variable''' #Activate for relative change
 
 # ========== Colormap Creation Functions ==========
 

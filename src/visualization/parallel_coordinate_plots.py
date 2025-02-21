@@ -159,9 +159,9 @@ def plot_individual_data_point(ax, model_name, current_xy, model_idx, value, his
         color = (180/255, 160/255, 120/255) if value < 0 else (55/255, 140/255, 225/255)
         
     if model_name.lower() == "ensemble mean":
-        ax.plot(current_xy[0], current_xy[1], 'D', mec='red', mfc='none', markersize=22, mew=2, zorder=5)
+        ax.plot(current_xy[0], current_xy[1], 'D', mec='red', mfc='none', markersize=24, mew=4, zorder=5)
     elif model_name.lower() == "ensemble median":
-        ax.plot(current_xy[0], current_xy[1], 'o', mec='black', mfc='none', markersize=28, mew=2, zorder=4)
+        ax.plot(current_xy[0], current_xy[1], 'o', mec='black', mfc='none', markersize=30, mew=4, zorder=4)
     else:
         dot_color = '#f0f0f0' if current_xy[0] % 2 == 0 else 'white'
         ax.plot(current_xy[0], current_xy[1], 'o', color=dot_color, markersize=38, zorder=1)
@@ -208,7 +208,7 @@ def adjust_axes(axes, variables, global_max_min_values, global_mm_min, global_mm
         axes[j].spines['top'].set_visible(False)
         axes[j].spines['bottom'].set_visible(False)
         axes[j].spines['right'].set_visible(False)
-        axes[j].set_xticklabels([display_variables[var]]) # Adjust font size of x-axis labels in main function
+        axes[j].set_xticklabels([display_variables[var]])  # Adjust font size of x-axis labels in main function
         axes[j].tick_params(axis='x', length=10, color='white')
         
         axes[j].axhline(y=0, color='gray', linestyle='-', linewidth=1)
@@ -336,7 +336,7 @@ def add_legend_and_colorbar(fig, ax, models, ddict_historical_mean, subdiv_idx):
     
     if all(value >= 0 for value in historical_values):
         upper_legend_elements = [
-            plt.Line2D([0], [0], marker='D', markeredgecolor='red', markerfacecolor='none', label='Ensemble mean', markersize=12, linestyle='None', lw=5),
+            plt.Line2D([0], [0], marker='D', markeredgecolor='red', markerfacecolor='none', label='Ensemble mean', markersize=12, linestyle='None', lw=10),
             plt.Line2D([0], [0], marker='o', mec='black', mfc='none', label='Ensemble median', markersize=15, linestyle='None', mew=2),
             plt.Line2D([0], [0], color=(55/255, 140/255, 225/255), label='$+\,\Delta$ BGWS', linestyle='-', linewidth=4),
             plt.Line2D([0], [0], color=(180/255, 160/255, 120/255), label='$-\,\Delta$ BGWS', linestyle='-', linewidth=4)  
@@ -344,7 +344,7 @@ def add_legend_and_colorbar(fig, ax, models, ddict_historical_mean, subdiv_idx):
     
     elif all(value <= 0 for value in historical_values):
         upper_legend_elements = [
-            plt.Line2D([0], [0], marker='D', markeredgecolor='red', markerfacecolor='none', label='Ensemble mean', markersize=12, linestyle='None', lw=5),
+            plt.Line2D([0], [0], marker='D', markeredgecolor='red', markerfacecolor='none', label='Ensemble mean', markersize=12, linestyle='None', lw=10),
             plt.Line2D([0], [0], marker='o', mec='black', mfc='none', label='Ensemble median', markersize=15, linestyle='None', mew=2),
             plt.Line2D([0], [0], color=(160/255, 113/255, 120/255), label='$+\,\Delta$ BGWS', linestyle='-', linewidth=4),
             plt.Line2D([0], [0], color=(30/255, 130/255, 30/255), label='$-\,\Delta$ BGWS', linestyle='-', linewidth=4)  

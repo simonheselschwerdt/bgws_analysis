@@ -591,7 +591,7 @@ def compute_vpd(ds_dict):
         # Ensure temperature is in Celsius for the Buck equation
         T = ds['tas']
         
-        # Compute saturation vapor pressure (e_s) using the Buck equation
+        # Compute saturation vapor pressure (e_s) using the Buck (1996) equation
         e_s = 611.21 * np.exp((18.678 - T / 234.5) * (T / (257.14 + T)))
         
         # Compute actual vapor pressure (e_a)
@@ -820,6 +820,10 @@ def is_numeric(data):
 
 import copy
 
+import xarray as xr
+import numpy as np
+import copy
+
 def compute_change_dict(ds_dict, var_rel_change=None):
     """
     Computes the change (absolute or relative) between historical and future datasets.
@@ -871,22 +875,23 @@ def compute_change_dict(ds_dict, var_rel_change=None):
                 print(f"Skipping model '{model}' for period '{period}' as there are no common variables.")
                 continue
 
-            ds_change = ds_hist[model].copy(deep=True)
-            
-            if var_rel_change == 'all':
-                var_rel_change = common_vars
+            # Define which variables should be computed as relative change
+            vars_to_compute = common_vars if var_rel_change == 'all' else set(var_rel_change) if var_rel_change else set()
+
+            # Create a new dataset instead of deep copying
+            ds_change = xr.Dataset()
 
             for var in common_vars:
-                if var == 'mrso' or (var_rel_change is not None and var in var_rel_change):
-                    # Compute relative change where ds_hist is not zero
-                    rel_change = (ds_future[model][var] - ds_hist[model][var]) / ds_hist[model][var].where(ds_hist[model][var] != 0) * 100
-                    ds_change[var].data = rel_change.data
+                if var in vars_to_compute or var == 'mrso':  # Treat `mrso` as always requiring relative change
+                    # Compute relative change safely, avoiding division by zero
+                    rel_change = (ds_future[model][var] - ds_hist[model][var]) / ds_hist[model][var].where(ds_hist[model][var] != 0, np.nan) * 100
+                    ds_change[var] = rel_change
                     ds_change[var].attrs['units'] = '%'
                 else:
                     # Compute absolute change
-                    abs_change = ds_future[model][var] - ds_hist[model][var]
-                    ds_change[var].data = abs_change.data
-            
+                    ds_change[var] = ds_future[model][var] - ds_hist[model][var]
+
+            # Retain dataset metadata
             ds_change.attrs = ds_future[model].attrs
             ds_change.attrs['computed_from'] = f'historical and {period}'
             ds_dict_change[f'{period}-historical'][model] = ds_change

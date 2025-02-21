@@ -39,6 +39,7 @@ import numpy as np
 import multiprocessing as mp
 import dask
 from dask.diagnostics import ProgressBar
+from scipy.stats import rv_discrete
 
 # ========== Statistic Computation Functions ==========
 
@@ -91,29 +92,75 @@ def compute_temporal_statistic(ds, statistic):
 
 def compute_spatial_statistic(ds, statistic):
     """
-    Compute statistic over spatial dimension.
+    Compute a spatial statistic (mean, std, min, var, median) on a weighted dataset.
 
     Parameters:
-    - ds: xarray Dataset to compute the statistic on.
-    - statistic: The statistic to compute, e.g., 'mean', 'std', 'min', 'var', 'median'.
+        ds (xarray DataArray): Input DataArray.
+        statistic (str): The statistic to compute ('mean', 'std', 'min', 'var', 'median').
 
     Returns:
-    - xarray Dataset with the computed statistic over spatial dimension.
+        xarray DataArray with the computed spatial statistic.
     """
-    # Calculate weights based on latitude
+    # Ensure dataset has required dimensions
+    if "lat" not in ds.dims or "lon" not in ds.dims:
+        raise ValueError("Dataset must contain 'lon' and 'lat' dimensions.")
+
+    # Compute latitude-based weights
     weights = np.cos(np.deg2rad(ds.lat))
     weights.name = "weights"
 
-    # Log the weights for debugging and documentation purposes
-    ds.attrs['weights'] = weights.values.tolist()
-    
+    # Expand weights to cover both lat and lon dimensions
+    weights = weights.broadcast_like(ds)
+
     # Apply weighted spatial averaging
     ds_weighted = ds.weighted(weights)
-    
-    # Compute the statistic on the weighted dataset
-    stat_ds = getattr(ds_weighted, statistic)(("lon", "lat"), keep_attrs=True, skipna=True)
-    
+
+    if statistic == "median":
+        # Compute weighted median using SciPy while ignoring NaNs
+        def weighted_median_scipy(data, weights):
+            """
+            Compute the weighted median using SciPy, ignoring NaNs.
+            """
+            # Flatten input arrays (needed for SciPy)
+            data = data.flatten()
+            weights = weights.flatten()
+
+            # Remove NaN values from both data and weights
+            valid_mask = ~np.isnan(data)
+            data = data[valid_mask]
+            weights = weights[valid_mask]
+
+            # Ensure there are valid data points
+            if len(data) == 0:
+                return np.nan  # If all values are NaN, return NaN
+
+            # Ensure data is sorted along with weights
+            sorted_indices = np.argsort(data)
+            sorted_data = data[sorted_indices]
+            sorted_weights = weights[sorted_indices]
+
+            # Compute cumulative distribution function (CDF)
+            cumulative_weight = np.cumsum(sorted_weights)
+            cumulative_weight /= cumulative_weight[-1]  # Normalize to [0, 1]
+
+            # Find the median (50th percentile)
+            median_idx = np.searchsorted(cumulative_weight, 0.5)
+            return sorted_data[median_idx]
+
+        # Apply weighted median across (lon, lat)
+        stat_ds = xr.apply_ufunc(
+            weighted_median_scipy, ds, weights,
+            input_core_dims=[["lon", "lat"], ["lon", "lat"]],
+            vectorize=True,
+            dask="parallelized",
+            output_dtypes=[ds.dtype]
+        )
+    else:
+        # Compute other supported statistics, ignoring NaNs
+        stat_ds = getattr(ds_weighted, statistic)(("lon", "lat"), keep_attrs=True, skipna=True)
+
     return stat_ds
+
 
 def compute_temporal_or_spatial_statistic(ds_dict, dimension, statistic):
     """
@@ -344,7 +391,7 @@ def compute_spatial_mean_with_subdivisions(ds_dict):
             for var in ds:
                 if 'subdivision' in ds[var].dims:
                     # Compute the weighted spatial mean using compute_spatial_statistic function
-                    spatial_mean = compute_spatial_statistic(ds[var], 'mean')
+                    spatial_mean = compute_spatial_statistic(ds[var], 'median')
                     
                     # Add the spatial mean to the output Dataset
                     ds_mean[var] = spatial_mean

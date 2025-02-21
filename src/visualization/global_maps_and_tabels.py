@@ -95,8 +95,11 @@ col_map_limits = {
         'bgws_ensmean': {'vmin': -10, 'vmax': 10, 'steps': 5},
         'bgws_ensstd': {'vmin': 0, 'vmax': 40, 'steps': 5},
         'pr': {'vmin': -0.8, 'vmax': 0.8, 'steps': 0.2},
+        #'pr': {'vmin': -50, 'vmax': 50, 'steps': 10}, #activate for relative change
         'mrro': {'vmin': -0.6, 'vmax': 0.6, 'steps': 0.2},
+        #'mrro': {'vmin': -100, 'vmax': 100, 'steps': 25}, #activate for relative change
         'tran': {'vmin': -0.3, 'vmax': 0.3, 'steps': 0.1},
+        #'tran': {'vmin': -100, 'vmax': 100, 'steps': 25}, #activate for relative change
         'RX5day': {'vmin': -40, 'vmax': 40, 'steps': 10},
         'evapo': {'vmin': -0.3, 'vmax': 0.3, 'steps': 0.1},
         'mrso': {'vmin': -15, 'vmax': 15, 'steps': 5},
@@ -335,7 +338,7 @@ def plot_var_data_on_map(ds_dict, model, variable, period, dpi=300, filetype='pd
 
     # Save figure
     if filepath is not None:
-        filename = f'{model}_{variable}_map.{filetype}'
+        filename = f'{model}_{variable}_map_rel.{filetype}'
         col_uti.save_fig(fig, filepath, filename, dpi=dpi)
         print(f"Figure saved under {filepath}{filename}")
     else:
@@ -377,7 +380,7 @@ def plot_agreement_mask(ds_dict_cleaned, ds, model, variable, ax_main):
         loc="lower right",
     )
 
-def plot_bgws_sub_change(ds_dict_historical, ds_dict_change, dpi=300, filetype='pdf', filepath=None):
+'''def plot_bgws_sub_change(ds_dict_historical, ds_dict_change, dpi=300, filetype='pdf', filepath=None):
     """
     Function to plot subdivisions based on current and change datasets for a specific variable and region.
     Each subdivision is represented by a different color on the map.
@@ -439,6 +442,83 @@ def plot_bgws_sub_change(ds_dict_historical, ds_dict_change, dpi=300, filetype='
         cbar.set_label('$\Delta$ BGWS [%]', fontsize=20)
         cbar.ax.tick_params(labelsize=14)
 
+    plot_agreement_mask(ds_dict_change, ds_historical, 'Ensemble mean', 'bgws', ax)
+
+    # Plot figure
+    plt.show()
+
+    # Save figure
+    if filepath is not None:
+        filename = f'BGWS_subdivision_change_map.{filetype}'
+        col_uti.save_fig(fig, filepath, filename, dpi=dpi)
+        print(f"Figure saved under {filepath}{filename}")
+    else:
+        print("Figure not saved! If you want to save the figure change filepath='your filepath/' in the function call.")'''
+
+
+def plot_bgws_sub_change(ds_dict_historical, ds_dict_change, dpi=300, filetype='pdf', filepath=None):
+    """
+    Function to plot subdivisions based on current and change datasets for a specific variable and region.
+    Each subdivision is represented by a different color on the map.
+
+    Parameters:
+    ds_dict_current (dict): Dictionary containing current datasets for different models.
+    ds_dict_change (dict): Dictionary containing change datasets for different models.
+    model (str): Model name to plot.
+    region (int): Region index to plot.
+    variable (str): Variable name to plot.
+    save_fig (bool): Whether to save the figure. Default is False.
+
+    Returns:
+    str: Filepath of the saved figure or a message if not saved.
+    """ 
+    
+    # Initialize the plot with a cartopy projection
+    fig = plt.figure(figsize=(30, 15))
+    ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+    
+    # Add coastlines and gridlines for context
+    ax.coastlines()
+    ax.tick_params(axis='both', which='major', labelsize=20)
+    gridlines = ax.gridlines(draw_labels=True, color='black', alpha=0.1, linestyle='--')
+    gridlines.top_labels = gridlines.right_labels = False
+    gridlines.xlabel_style = {'size': 24}
+    gridlines.ylabel_style = {'size': 24}
+
+    # Add box
+    rect = add_box(fig, 0.1361, 0.191, 0.19, 0.27, "round,pad=0.004", 1, 'gray', 'white', 0)
+    fig.patches.append(rect)
+
+    # Subdivide data
+    ds_historical, ds_change, subdivisions = subdivide_bgws(ds_dict_historical, ds_dict_change)
+
+    # Get subdivision colormaps
+    bw_cmap, _, gw_cmap, _ = col_uti.create_bgws_change_colormaps(-10, 10, 5)
+
+    # Plot subdivision data
+    for i, (name, (subdivision, change)) in enumerate(subdivisions.items()):
+        norm = plt.Normalize(vmin=-10, vmax=10)
+
+        if name == 'Historical Blue Water Regime':
+            colmap = bw_cmap
+        else:
+            colmap = gw_cmap
+       
+        # Apply colormap based on the change values
+        pcm = change.plot(ax=ax, add_colorbar=False, cmap=colmap, norm=norm, transform=ccrs.PlateCarree(), add_labels=False)
+        
+        # Add colorbar for each subdivision, stacked horizontally
+        cbar_ax = fig.add_axes([0.182, 0.27 + i * 0.12, 0.1, 0.02], zorder=2)
+        cbar = fig.colorbar(pcm, cax=cbar_ax, orientation='horizontal', extend='both', drawedges=True)
+        cbar.set_ticks([-10, 0, 10])
+        cbar.ax.set_xticklabels(['-10', '0', '10'])
+        
+        # Add the label to the left of the colorbar
+        fig.text(0.157 + i * -0.0075, 0.32 + i * 0.12, name, va='center', ha='left', fontsize=26, zorder=2)
+        cbar.set_label('$\Delta$ BGWS [%]', fontsize=20)
+        cbar.ax.tick_params(labelsize=14)
+
+    
     plot_agreement_mask(ds_dict_change, ds_historical, 'Ensemble mean', 'bgws', ax)
 
     # Plot figure
