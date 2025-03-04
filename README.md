@@ -26,6 +26,11 @@ We provide all code to reproduce the main results and all figures of the paper. 
 ### **Data availability** 
 Due to storage and copyright constraints, original data have to be downloaded from their sources (given in Data Availability Statement).
 
+## **Demo**  
+For demonstration purposes, users can run the analysis using the default settings provided in `config.py`. These settings define the data directory, model selection, variable names, and other parameters required to execute the scripts. Simply import the configuration file and use the predefined values in your Jupyter Notebook.  
+
+This will allow you to reproduce only parts of the analysis (e.g. historical maps of precipitation for default model). To fully reproduce all results, please follow the instructions in the Jupyter Notebooks and refer to the Methods section of the manuscript.  
+
 ## Installation
 
 Follow these steps to set up the project locally:
