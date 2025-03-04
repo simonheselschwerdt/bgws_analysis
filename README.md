@@ -8,6 +8,7 @@
 ## Table of Contents
 
 - [Description](#description)
+- [Demo](#demo)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Directory Structure](#directory-structure)
