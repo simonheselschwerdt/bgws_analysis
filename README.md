@@ -1,4 +1,4 @@
-# **Blue-Green Water Share Analysis** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14884108.svg)](https://doi.org/10.5281/zenodo.14884108)
+# **Blue-Green Water Share Analysis** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14979322.svg)](https://doi.org/10.5281/zenodo.14979322)
 
 ## **Title**
 **Large impact of extreme 5-day precipitation on projected blue-green water shares**
