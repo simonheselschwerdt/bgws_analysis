@@ -1,7 +1,7 @@
 # **Blue-Green Water Share Analysis** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14979322.svg)](https://doi.org/10.5281/zenodo.14979322)
 
 ## **Title**
-**Large impact of extreme 5-day precipitation on projected blue-green water shares**
+**Large impact of extreme precipitation on projected blue-green water partitioning**
 
 ---
 
@@ -16,7 +16,7 @@
 - [License](#license)
 
 ## Description
-This repository contains code to reproduce the findings of the work in preliminary manuscript 'Large impact of extreme precipitation on projected blue-green water shares' (by Simon P. Heselschwerdt*, Yannis Markonis, Anna M. Ukkola, Thorsten Wagener, Lan Wang-Erlandsson, Yuting Yang, and Peter Greve), and this README describes the code and data for reproducibility.
+This repository contains code to reproduce the findings of the work in preliminary manuscript 'Large impact of extreme precipitation on projected blue-green water partitioning' (by Simon P. Heselschwerdt*, Yannis Markonis, Anna M. Ukkola, Thorsten Wagener, Lan Wang-Erlandsson, Yuting Yang, and Peter Greve), and this README describes the code and data for reproducibility.
 
 ### **Notebook-Centric Workflow**
 The project uses Jupyter notebooks for all major tasks, including data ingestion, preprocessing, analysis, and visualization. The `src` directory stores reusable functions and utilities to support the notebooks, ensuring modular and clean code.
@@ -74,12 +74,7 @@ Follow these steps to set up the project locally:
      ```plaintext 
      notebooks/analysis_and_plots/global_maps.ipynb
      ```
-6. **Generate Parallel Coordinate Plots**
-   - Compute spatial means and generate parallel coordinate plots for the analysis:
-     ```plaintext
-     notebooks/analysis_and_plots/parallel_coordinate_plots.ipynb
-     ```
-8. **Perform Regression Analysis and Plot Importance**
+6. **Perform Regression Analysis and Plot Importance**
    - Perform regression analysis and plot importance scores:
      ```plaintext
      notebooks/analysis_and_plots/regression_analysis_and_plots.ipynb
@@ -95,7 +90,6 @@ bgws-analysis/
 │   │   └── compute_variables_indices.ipynb
 │   ├── analysis_and_plots/     
 │   │   ├── global_maps.ipynb
-│   │   ├── parallel_coordinate_plots.ipynb
 │   │   └── regression_analysis_and_plots.ipynb
 ├── src/                                            
 │   ├── __init__.py                               # Package initialization
@@ -108,12 +102,10 @@ bgws-analysis/
 │   │   └── save_data_as_nc.py
 │   ├── analysis/        
 │   │   ├── __init__.py 
-│   │   ├── regression_analysis.py
-│   │   └── regression_analysis_rf.py
+│   │   └── regression_analysis.py
 │   └── visualization/ 
 │   │   ├── __init__.py 
 │   │   ├── colormaps.py        
-│   │   ├── parallel_coordinate_plots.py
 │   │   └── regression_analysis_results.py
 ├── environment.yml                               # Conda environment specification
 ├── LICENSE                                       # License file
