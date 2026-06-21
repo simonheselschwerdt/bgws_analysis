@@ -16,7 +16,7 @@
 - [License](#license)
 
 ## Description
-This repository contains code to reproduce the findings of the work in preliminary manuscript 'Large impact of extreme precipitation on projected blue-green water partitioning' (by Simon P. Heselschwerdt*, Yannis Markonis, Anna M. Ukkola, Thorsten Wagener, Lan Wang-Erlandsson, Yuting Yang, and Peter Greve), and this README describes the code and data for reproducibility.
+This repository contains code to reproduce the findings of the work 'Large impact of extreme precipitation on projected blue-green water partitioning' (by Simon P. Heselschwerdt*, Yannis Markonis, Anna M. Ukkola, Thorsten Wagener, Lan Wang-Erlandsson, Yuting Yang, and Peter Greve), and this README describes the code and data for reproducibility.
 
 ### **Notebook-Centric Workflow**
 The project uses Jupyter notebooks for all major tasks, including data ingestion, preprocessing, analysis, and visualization. The `src` directory stores reusable functions and utilities to support the notebooks, ensuring modular and clean code.
@@ -72,7 +72,7 @@ Follow these steps to set up the project locally:
 5. **Generate Maps**
    - Create global maps of the blue-green water share and ensemble statistics:
      ```plaintext 
-     notebooks/analysis_and_plots/global_maps.ipynb
+     notebooks/analysis/global_maps_and_tables.ipynb
      ```
 6. **Perform Regression Analysis and Plot Importance**
    - Perform regression analysis and plot importance scores:
@@ -88,8 +88,8 @@ bgws-analysis/
 │   │   ├── import_CMIP6_data_intake.ipynb            
 │   │   ├── preprocess_CMIP6_data.ipynb
 │   │   └── compute_variables_indices.ipynb
-│   ├── analysis_and_plots/     
-│   │   ├── global_maps.ipynb
+│   ├── analysis/     
+│   │   ├── global_maps_and_tables.ipynb
 │   │   └── regression_analysis_and_plots.ipynb
 ├── src/                                            
 │   ├── __init__.py                               # Package initialization
