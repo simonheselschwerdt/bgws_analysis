@@ -50,27 +50,34 @@ def map_colors_to_display_names(base_colors, predictor_vars):
     return display_colors
 
 def get_var_name_parallel_coordinate_plot(variables):
+    # mathtext snippets WITHOUT surrounding $...$
     var_map = {
-        'bgws': ('BGWS', r'\%'),
-        'RX5day': ('RX5day', r'mm'),
-        'pr': ('P', r'\frac{mm}{day}'),
-        'mrro': ('R', r'\frac{mm}{day}'),
-        'tran': ('Tran', r'\frac{mm}{day}'),
-        'evapo': ('E', r'\frac{mm}{day}'),
-        'mrso': ('SM', r'\%'),
-        'lai': ('LAI', r'\frac{m^2}{m^2}'),
-        'wue': ('WUE', r'\frac{GPP}{Tran}'),
-        'vpd': ('VPD', r'hPa')
+        'bgws_tran_mean':  (r'\mathrm{BGWS}',     r'\mathrm{\%}'),
+        'RX5day':(r'\mathrm{RX5day}',   r'\mathrm{mm}'),
+        'pr_mean':    (r'P',                 r'\mathrm{mm\,d^{-1}}'),
+        'mrro_mean':  (r'R',                 r'\mathrm{mm\,d^{-1}}'),
+        'tran_mean':  (r'E_t',               r'\mathrm{mm\,d^{-1}}'),
+        'evapo': (r'E',                 r'\mathrm{mm\,d^{-1}}'),
+        'mrso':  (r'\mathrm{SM}',       r'\mathrm{\%}'),                 
+        'lai':   (r'\mathrm{LAI}',      r'\mathrm{m^{2}\,m^{-2}}'),
+        'wue':   (r'\mathrm{WUE}',      r'\mathrm{gC\,mm^{-1}}'),
+        'vpd':   (r'\mathrm{VPD}',      r'\mathrm{hPa}')
     }
+
     display_variables = {}
+
     for var in variables:
         if var in var_map:
-            abbreviation, unit = var_map[var]
-            display_variables[var] =  f"$\\Delta\\, \\mathit{{{abbreviation}}}$ \n $\\left[{unit}\\right]$" #f"${{\Delta\, \mathrm{{\it{{{abbreviation}}}}}}}$"
+            abbr, unit = var_map[var]
+            # two-line label: Δ variable, then [unit]
+            label = rf"$\Delta{abbr}$" + "\n" + rf"$[{unit}]$"
+            display_variables[var] = label
         else:
             print(f"Variable '{var}' not found in var_map.")
             display_variables[var] = var
+
     return display_variables
+
 
 '''def get_var_name_parallel_coordinate_plot(variables):
     var_map = {
@@ -97,25 +104,32 @@ def get_var_name_parallel_coordinate_plot(variables):
 
 def get_global_map_var_name(period, variable):
     var_map = {
-        'pr': ('Precipitation', r'mm day$^{-1}$'),
-        'mrro': ('Runoff', r'mm day$^{-1}$'),
-        'tran': ('Transpiration', r'mm day$^{-1}$'),
-        'bgws': ('Blue-Green Water Share', r'%'),
+        'pr_mean': ('P', r'mm day$^{-1}$'),
+        'mrro_mean': ('R', r'mm day$^{-1}$'),
+        'tran_mean': (r'E$_t$', r'mm day$^{-1}$'),
+        'bgws_tran_mean': ('BGWS', r'%'),
         'RX5day': ('RX5day', r'mm'),
-        'evapo': ('Evaporation', r'mm day$^{-1}$'),
-        'evspsbl': ('Evapotranspiration', r'mm day$^{-1}$'),
-        'vpd': ('Vapour Pressure Deficit', r'hPa'),
-        'mrso': ('Soil Moisture', r'%'), # Only change 
-        'lai': ('Leaf Area Index', r'm$^{2}$ m$^{-2}$'),
-        'gpp': ('Gross Primary Productivity', r'gC m$^{-2}$ day$^{-1}$'),  
-        'wue': ('Water Use Efficiency', r'gC m$^{-2}$ mm$^{-1}$')
+        'evapo': ('E', r'mm day$^{-1}$'),
+        'evspsbl': ('ET', r'mm day$^{-1}$'),
+        'vpd': ('VPD', r'hPa'),
+        'mrso': ('SM', r'%'), # Only change 
+        'lai': ('LAI', r'm$^{2}$ m$^{-2}$'),
+        'gpp': ('GPP', r'gC m$^{-2}$ day$^{-1}$'),  
+        'wue': ('WUE', r'gC m$^{-2}$ mm$^{-1}$'),
+        'mrro_pr': ('Runoff / Precipitation', r'%'),
+        'tran_pr': ('Transpiration / Precipitation', r'%'),
+        'rx5day_ratio': ('RX5day ratio', r'%'), #/ Annual Precipitation 
+        'mrsos': ('SM$_{surf}$', r'mm'),
+        'r_over_p_mean': ('R/P', r'%'),
+        'et_over_p_mean': (r'E$_t$/P', r'%'),
+        'pr_seasonality': (r'P$_{seas}$', r'mm day$^{-1}$'),
     }
     if variable in var_map:
         long_name, unit = var_map[variable]
         if period == 'historical' or period == 'ssp370':
             display_variable = f"{long_name} [{unit}]"
         else: 
-            display_variable = f"$\Delta$ {long_name} [{unit}]"
+            display_variable = f"$\Delta${long_name} [{unit}]"
     else:
         print(f"Variable '{variable}' not found in var_map.")
         display_variable = variable 
@@ -280,7 +294,7 @@ def create_palette_from_colormap(bgws_cmap, bgws_cmap_norm, coefficients):
 
 def create_colormap(var, period, vmin, vmax, steps):
     if period == 'historical' or period == 'ssp370':
-        if var == 'bgws_ensmean':
+        if var == 'bgws_ensmean' or var == 'bgws_tran_mean':
             under = (15/255, 115/255, 15/255)  # deeper green
             deep_negative = (30/255, 130/255, 30/255) # green
             light_negative = (240/255, 255/255, 240/255) # light green
@@ -303,8 +317,23 @@ def create_colormap(var, period, vmin, vmax, steps):
             boundaries, n = get_colmap_set_up(vmin, vmax, steps)
             cmap, cmap_norm = create_one_gradient_colormap(light_positive, deep_positive, boundaries, n, over)
 
+        elif var == 'precipitation_intensity_index':
+            under = (84/255, 48/255, 5/255) 
+            deep_negative = (100/255, 64/255, 21/255)  
+            light_negative = (246/255, 232/255, 195/255)  
+            
+            over = (0/255, 60/255, 48/255) 
+            deep_positive = (16/255, 76/255, 64/255) 
+            light_positive = (199/255, 234/255, 229/255)
 
-        elif var == 'pr' or var == 'RX5day' or var == 'mrro':
+            boundaries, n = get_colmap_set_up(vmin, vmax, steps)
+            
+            cmap, cmap_norm = create_two_gradient_colormap(deep_negative, light_negative, 
+                                                                  deep_positive, light_positive, 
+                                                                  boundaries, n, under, over)
+
+
+        elif var == 'pr_mean' or var == 'RX5day' or var == 'mrro_mean' or var == 'mrro_pr' or var == 'mrsos_mean' or var == 'r_over_p_mean' or var == 'pr_seasonality':
             # Color stops for the gradient: Light Beige -> Dark Blue
             light_positive = (246/255, 232/255, 195/255) # Light Beige
             deep_positive = (0/255, 62/255, 125/255) # Dark Blue
@@ -313,7 +342,7 @@ def create_colormap(var, period, vmin, vmax, steps):
             boundaries, n = get_colmap_set_up(vmin, vmax, steps)
             cmap, cmap_norm = create_one_gradient_colormap(light_positive, deep_positive, boundaries, n, over)
 
-        elif var == 'evapo' or var == 'vpd' or var == 'wue':
+        elif var == 'evapo_mean' or var == 'vpd_mean' or var == 'vpd_seasonality' or var == 'wue_mean' or var == 'rx5day_ratio' or var == 'clt_mean':
             # Color stops for the gradient: Light Beige -> Dark Purple
             light_positive = (246/255, 232/255, 195/255) # Light Beige
             deep_positive = (103/255, 0/255, 31/255) #Dark Purple
@@ -323,7 +352,7 @@ def create_colormap(var, period, vmin, vmax, steps):
 
             cmap, cmap_norm = create_one_gradient_colormap(light_positive, deep_positive, boundaries, n, over)
 
-        elif var == 'tran' or var == 'gpp' or var == 'lai':
+        elif var == 'tran_mean' or var == 'gpp_mean' or var == 'lai_mean' or var == 'tran_pr' or var == 'et_over_p_mean':
             # Color stops for the gradient: Light Beige -> Dark Green
             light_positive = (246/255, 232/255, 195/255) # Light Beige
             deep_positive = (0/255, 60/255, 48/255) # Dark Green
@@ -331,11 +360,22 @@ def create_colormap(var, period, vmin, vmax, steps):
 
             boundaries, n = get_colmap_set_up(vmin, vmax, steps)
             cmap, cmap_norm = create_one_gradient_colormap(light_positive, deep_positive, boundaries, n, over)
+        
+        elif var == 'tas_mean':
+            # Color stops for the gradient: Light Beige -> Dark Green
+            light_positive = (0/255, 62/255, 125/255) # Dark Blue
+            deep_positive =  (103/255, 0/255, 31/255) #Dark Purple
+            over = (80/255, 0/255, 20/255)  # Darker Purple
+
+            boundaries, n = get_colmap_set_up(vmin, vmax, steps)
+            cmap, cmap_norm = create_one_gradient_colormap(light_positive, deep_positive, boundaries, n, over)
+    
         else:
             raise ValueError(f"Colormap for {var} not defined")
+            
     
-    elif period == 'ssp370-historical':
-        if var == 'vpd': # VPD has only positive change
+    elif period == 'ssp370_ff-historical':
+        if var == 'vpd_mean': # VPD has only positive change
             # Color stops for the gradient: Light Beige -> Dark Purple
             light_positive = (246/255, 232/255, 195/255) # Light Beige
             deep_positive = (103/255, 0/255, 31/255) #Dark Purple
@@ -416,9 +456,9 @@ def create_bgws_change_colormaps(vmin, vmax, steps):
     deep_negative = (30/255, 130/255, 30/255) # green
     light_negative = (240/255, 255/255, 240/255) # light green
     
-    over = (140/255, 95/255, 100/255)  # deeper violet
-    deep_positive = (160/255, 113/255, 120/255) # violet
-    light_positive = (255/255, 237/255, 240/255) # light violet
+    over = (0.510, 0.310, 0.620)  # #824F9E
+    deep_positive = (0.54, 0.42, 0.65)  # slightly darker violet
+    light_positive = (0.875, 0.835, 0.914)  # light tint
     
     # Define boundaries and steps for the bins
     boundaries, n = get_colmap_set_up(vmin, vmax, steps)

@@ -47,34 +47,107 @@ import save_data_as_nc as save_dat
 
 # ========== Functions ==========
 
-def create_parallel_coordinate_plots(ddict_change_mean, ddict_historical_mean, selected_vars, yaxis_limits, savepath=None):
+#def create_parallel_coordinate_plots(ddict_change_mean, ddict_historical_mean, selected_vars, yaxis_limits, savepath=None):
     
+#    models = list(ddict_change_mean.keys())
+#    variables, display_variables, change_type = extract_variables_info(ddict_change_mean, selected_vars)
+  
+#    for subdiv_idx in range(ddict_change_mean['Ensemble mean'].sizes['subdivision']):
+#        fig, axes = plt.subplots(1, len(variables), sharey=False, figsize=(28, 12))
+
+#        plot_region(fig, axes, models, ddict_change_mean, ddict_historical_mean, 
+#                    variables, display_variables, change_type, subdiv_idx, yaxis_limits)
+
+#        for ax in axes:
+#            ax.set_xticklabels(ax.get_xticklabels(), rotation=0, ha='center', fontsize=32)
+    
+#        add_legend_and_colorbar(fig, axes, models, ddict_historical_mean, subdiv_idx)
+
+#        if savepath is not None:
+#            if subdiv_idx == 0:
+#                subdiv = 'bw_regime'
+#            else:
+#                 subdiv = 'gw_regime'
+#            filename = f'para_coord_{subdiv}.pdf'
+#            col_uti.save_fig(fig, savepath, filename, dpi=300)
+#            print(f"Figure saved under {savepath}{filename}")
+#        else:
+#           print("Figure not saved! If you want to save the figure change filepath='your filepath/' in the function call.")
+
+#        plt.show()
+
+def create_parallel_coordinate_plots(
+        ddict_change_mean,
+        ddict_historical_mean,
+        selected_vars,
+        yaxis_limits,
+        savepath=None,
+        ax=None,
+        subdiv="bw"
+):
     models = list(ddict_change_mean.keys())
     variables, display_variables, change_type = extract_variables_info(ddict_change_mean, selected_vars)
-  
-    for subdiv_idx in range(ddict_change_mean['Ensemble mean'].sizes['subdivision']):
-        fig, axes = plt.subplots(1, len(variables), sharey=False, figsize=(28, 12))
 
-        plot_region(fig, axes, models, ddict_change_mean, ddict_historical_mean, 
-                    variables, display_variables, change_type, subdiv_idx, yaxis_limits)
+    # Select subdivision index
+    subdiv_idx = 0 if subdiv == "bw" else 1
 
-        for ax in axes:
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=0, ha='center', fontsize=32)
-    
-        add_legend_and_colorbar(fig, axes, models, ddict_historical_mean, subdiv_idx)
+    # -----------------------------------------
+    # CASE 1 — Standalone figure (old behavior)
+    # -----------------------------------------
+    if ax is None:
+        fig, axes = plt.subplots(
+            1, len(variables),
+            sharey=False,
+            figsize=(28, 12)
+        )
 
-        if savepath is not None:
-            if subdiv_idx == 0:
-                subdiv = 'bw_regime'
-            else:
-                 subdiv = 'gw_regime'
-            filename = f'para_coord_{subdiv}.pdf'
-            col_uti.save_fig(fig, savepath, filename, dpi=300)
-            print(f"Figure saved under {savepath}{filename}")
-        else:
-            print("Figure not saved! If you want to save the figure change filepath='your filepath/' in the function call.")
+    # -----------------------------------------
+    # CASE 2 — Embedded inside parent axis
+    # -----------------------------------------
+    else:
+        fig = ax.figure   # parent figure
 
+        # Remove the placeholder axis
+        ax.remove()
+
+        # Create grid inside the space originally occupied by ax
+        # This will produce len(variables) sub-axes side by side
+        gs = fig.add_gridspec(
+            nrows=1,
+            ncols=len(variables),
+            left=ax.get_position().x0,
+            right=ax.get_position().x1,
+            bottom=ax.get_position().y0,
+            top=ax.get_position().y1,
+            wspace=0.25
+        )
+
+        axes = [fig.add_subplot(gs[0, j]) for j in range(len(variables))]
+
+    # === PLOT REGION ===
+    plot_region(fig, axes, models, ddict_change_mean, ddict_historical_mean,
+                variables, display_variables, change_type, subdiv_idx, yaxis_limits)
+
+    # Axis styling
+    for a in axes:
+        a.set_xticklabels(a.get_xticklabels(), rotation=0, ha='center', fontsize=32)
+
+    # Add colorbar and legend
+    add_legend_and_colorbar(fig, axes, models, ddict_historical_mean, subdiv_idx)
+
+    # === Save only if standalone ===
+    if savepath and ax is None:
+        filename = f"para_coord_{subdiv}.pdf"
+        col_uti.save_fig(fig, savepath, filename, dpi=300)
+        print(f"Figure saved under {savepath}{filename}")
+
+    # Only show if standalone
+    if ax is None:
         plt.show()
+
+    return axes
+
+
 
 
 def plot_region(fig, axes, models, ddict_change_mean, ddict_historical_mean, 
@@ -154,7 +227,7 @@ def plot_data(fig, axes, models, variables, ddict_change_mean, ddict_historical_
 def plot_individual_data_point(ax, model_name, current_xy, model_idx, value, historical_value):
     """Plot a single data point."""
     if historical_value < 0:
-        color = (30/255, 130/255, 30/255) if value < 0 else (160/255, 113/255, 120/255)
+        color = (30/255, 130/255, 30/255) if value < 0 else (0.510, 0.310, 0.620)#(160/255, 113/255, 120/255)
     else:
         color = (180/255, 160/255, 120/255) if value < 0 else (55/255, 140/255, 225/255)
         
@@ -173,7 +246,7 @@ def plot_individual_data_point(ax, model_name, current_xy, model_idx, value, his
 def plot_connection(fig, axes, var_idx, prev_xy, current_xy, value, historical_value):
     """Plot a connection between two data points."""
     if historical_value < 0:
-        color = (30/255, 130/255, 30/255) if value < 0 else (160/255, 113/255, 120/255)
+        color = (30/255, 130/255, 30/255) if value < 0 else (0.510, 0.310, 0.620)#(160/255, 113/255, 120/255)
     else:
         color = (180/255, 160/255, 120/255) if value < 0 else (55/255, 140/255, 225/255)
         
@@ -346,7 +419,7 @@ def add_legend_and_colorbar(fig, ax, models, ddict_historical_mean, subdiv_idx):
         upper_legend_elements = [
             plt.Line2D([0], [0], marker='D', markeredgecolor='red', markerfacecolor='none', label='Ensemble mean', markersize=12, linestyle='None', lw=10),
             plt.Line2D([0], [0], marker='o', mec='black', mfc='none', label='Ensemble median', markersize=15, linestyle='None', mew=2),
-            plt.Line2D([0], [0], color=(160/255, 113/255, 120/255), label='$+\,\Delta$ BGWS', linestyle='-', linewidth=4),
+            plt.Line2D([0], [0], color=(0.510, 0.310, 0.620), label='$+\,\Delta$ BGWS', linestyle='-', linewidth=4), #(160/255, 113/255, 120/255)
             plt.Line2D([0], [0], color=(30/255, 130/255, 30/255), label='$-\,\Delta$ BGWS', linestyle='-', linewidth=4)  
         ]
     
@@ -363,8 +436,17 @@ def add_legend_and_colorbar(fig, ax, models, ddict_historical_mean, subdiv_idx):
     num_columns = 2 # Number of columns for model names
     column_width = 0.115 # Horizontal space between columns
 
+    import re
+
+    def clean_model_name(name: str) -> str:
+        # Remove CMIP realization/variant suffixes like _r1i1p1f1, _r6i1p1f2_gn, or CMIP5-style _r1i1p1
+        return re.sub(r'_r\d+i\d+p\d+(f\d+)?(_[A-Za-z0-9]+)?$', '', name)
+    
     # Filter out the ensemble mean and median for the model names annotation
     model_names = [model for model in models if model not in ["Ensemble mean", "Ensemble median"]]
+    
+    # Clean the names
+    model_names = [clean_model_name(m) for m in model_names]
 
     # Calculate how many names per column
     names_per_column = len(model_names) // num_columns + (len(model_names) % num_columns > 0)

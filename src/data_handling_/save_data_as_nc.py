@@ -1,12 +1,3 @@
-"""
-src/data_handling/save_data_as_nc.py
-
-Small helper module for saving datasets to NetCDF used by `process_data.py`.
-
-Author: Simon P. Heselschwerdt
-Date: 2026-02-26
-"""
-
 # Save data as netCDF
 
 import dask
